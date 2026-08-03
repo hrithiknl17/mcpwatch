@@ -4,7 +4,7 @@ MCPwatch stdio probe.
 Spawns an MCP server as a child process, speaks JSON-RPC over stdio,
 and records staged timings + failure classification.
 """
-import argparse, json, subprocess, sys, time, threading, queue, os, hashlib, shutil, tempfile
+import argparse, json, re, subprocess, sys, time, threading, queue, os, hashlib, shutil, tempfile
 
 PROTOCOL_VERSION = "2025-06-18"
 
@@ -16,6 +16,25 @@ HARD_WALL_S = 240       # absolute per-target ceiling, install included
 # npm error strings that mean "the package does not exist / cannot be installed"
 INSTALL_MARKERS = ("e404", "404 not found", "npm error", "enoent", "could not determine",
                    "etarget", "no matching version", "eresolve")
+
+# Servers routinely demand credentials the registry never declared in
+# environmentVariables. Those die before initialize and look identical to a crash.
+# Counting them as failures inflates the headline number; the fix is to read the
+# server's own complaint. Deliberately conservative: a credential NOUN must appear
+# alongside a "missing/required" phrasing, because over-matching here deflates the
+# failure rate just as dishonestly as under-matching inflates it.
+_CRED_NOUN = re.compile(
+    r"\b(env(?:ironment)?[ _-]?var\w*|api[ _-]?key|access[ _-]?key|secret|token|"
+    r"credential|wallet|password|passphrase|macaroon|private[ _-]?key|auth\w*)\b", re.I)
+_CRED_VERB = re.compile(
+    r"(is required|are required|required\b|missing|not set|must be set|not configured|"
+    r"no .{0,20}configured|set one of|please set|unset|provide a|expected .{0,20}to be set)", re.I)
+
+
+def looks_like_missing_credentials(text):
+    if not text:
+        return False
+    return bool(_CRED_NOUN.search(text) and _CRED_VERB.search(text))
 
 
 class Probe:
@@ -163,6 +182,7 @@ def probe(name, cmd, env=None, spec=None, identifier=None, prewarm=True,
         "protocol_version": None, "server_info": None,
         "tool_count": None, "tool_names": [], "schema_hash": None,
         "stdout_polluted": False, "prewarmed": False, "spawn_mode": "direct",
+        "undeclared_creds": False,
         "probed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     wall0 = time.time()
@@ -244,12 +264,19 @@ def probe(name, cmd, env=None, spec=None, identifier=None, prewarm=True,
         # here is a crash, not an install failure -- never misattribute it
         cls = "CRASH_ON_START" if r["prewarmed"] else (
             "INSTALL_FAILED" if any(k in low for k in INSTALL_MARKERS) else "CRASH_ON_START")
+        # the server told us what it wanted -- believe it over the registry metadata
+        if cls == "CRASH_ON_START" and looks_like_missing_credentials(tail):
+            cls = "UNDECLARED_CREDENTIALS"
+            r["undeclared_creds"] = True
         r.update(stage_failed="initialize", error_class=cls, error_detail=(tail or str(e))[:600])
         return finish()
 
     if "error" in resp:
-        r.update(stage_failed="initialize", error_class="INIT_RPC_ERROR",
-                 error_detail=json.dumps(resp["error"])[:400])
+        detail = json.dumps(resp["error"])[:400]
+        cls = "UNDECLARED_CREDENTIALS" if looks_like_missing_credentials(detail) else "INIT_RPC_ERROR"
+        if cls == "UNDECLARED_CREDENTIALS":
+            r["undeclared_creds"] = True
+        r.update(stage_failed="initialize", error_class=cls, error_detail=detail)
         return finish()
 
     result = resp.get("result", {})

@@ -1,0 +1,1337 @@
+[
+  {
+    "server_name": "agency.kesey/pretrip",
+    "version": "1.0.1",
+    "registry_type": "npm",
+    "identifier": "pretrip-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "pretrip-mcp@1.0.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": null,
+    "server_version": "1.0.1",
+    "status": "active",
+    "published_at": "2026-07-26T18:03:21.463557Z"
+  },
+  {
+    "server_name": "ai.adeu/adeu",
+    "version": "1.7.1",
+    "registry_type": "npm",
+    "identifier": "@adeu/mcp-server",
+    "cmd": [
+      "npx",
+      "-y",
+      "@adeu/mcp-server@1.7.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/dealfluence/adeu",
+    "server_version": "1.7.1",
+    "status": "active",
+    "published_at": "2026-05-16T13:54:48.18266Z"
+  },
+  {
+    "server_name": "ai.aetherwealth/mcp",
+    "version": "0.2.11",
+    "registry_type": "npm",
+    "identifier": "@aetherwealth/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@aetherwealth/mcp@0.2.11"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": null,
+    "server_version": "0.2.11",
+    "status": "active",
+    "published_at": "2026-07-31T14:44:04.124681Z"
+  },
+  {
+    "server_name": "ai.agenticaffiliate/affiliate-networks-mcp",
+    "version": "0.19.0",
+    "registry_type": "npm",
+    "identifier": "affiliate-networks-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "affiliate-networks-mcp@0.19.0"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/bobberrisford/affiliatemcp",
+    "server_version": "0.19.0",
+    "status": "active",
+    "published_at": "2026-07-29T07:26:14.414867Z"
+  },
+  {
+    "server_name": "ai.agenttrust/mcp-server",
+    "version": "1.1.1",
+    "registry_type": "npm",
+    "identifier": "@agenttrust/mcp-server",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agenttrust/mcp-server@1.1.1"
+    ],
+    "required_env": [
+      "AGENTTRUST_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/agenttrust/mcp-server",
+    "server_version": "1.1.1",
+    "status": "active",
+    "published_at": "2026-03-06T11:23:10.721165Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-agentops",
+    "version": "0.1.1",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-agentops",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-agentops@0.1.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.1.1",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:14.904919Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-bestiary",
+    "version": "0.1.3",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-bestiary",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-bestiary@0.1.3"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.1.3",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:15.433564Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-browser-workflow",
+    "version": "0.1.1",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-browser-workflow",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-browser-workflow@0.1.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.1.1",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:15.897391Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-compose",
+    "version": "0.13.0",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-compose",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-compose@0.13.0"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.13.0",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:16.321193Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-edge-finance",
+    "version": "0.18.8",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-edge-finance",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-edge-finance@0.18.8"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.18.8",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:17.095531Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-edge-market",
+    "version": "0.15.6",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-edge-market",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-edge-market@0.15.6"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.15.6",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:17.497855Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-locale",
+    "version": "0.8.7",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-locale",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-locale@0.8.7"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.8.7",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:17.9033Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-matchpoint",
+    "version": "0.1.4",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-matchpoint",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-matchpoint@0.1.4"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.1.4",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:18.280353Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-mediakit",
+    "version": "0.11.9",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-mediakit",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-mediakit@0.11.9"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.11.9",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:18.653557Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-model-router",
+    "version": "0.1.1",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-model-router",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-model-router@0.1.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.1.1",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:19.082426Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-prooflayer",
+    "version": "0.2.4",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-prooflayer",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-prooflayer@0.2.4"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.2.4",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:19.560994Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-retail",
+    "version": "0.2.1",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-retail",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-retail@0.2.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.2.1",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:19.946363Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-rollforge",
+    "version": "0.1.5",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-rollforge",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-rollforge@0.1.5"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.1.5",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:20.41779Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-statline",
+    "version": "0.1.3",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-statline",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-statline@0.1.3"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.1.3",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:20.828032Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-synthforge",
+    "version": "0.8.2",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-synthforge",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-synthforge@0.8.2"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.8.2",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:21.289726Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-web-probe",
+    "version": "0.32.1",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-web-probe",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-web-probe@0.32.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.32.1",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:21.796993Z"
+  },
+  {
+    "server_name": "ai.agentutility/mcp-wordmint",
+    "version": "0.16.1",
+    "registry_type": "npm",
+    "identifier": "@agentutility/mcp-wordmint",
+    "cmd": [
+      "npx",
+      "-y",
+      "@agentutility/mcp-wordmint@0.16.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/rooz21/x402",
+    "server_version": "0.16.1",
+    "status": "active",
+    "published_at": "2026-07-14T21:10:22.302521Z"
+  },
+  {
+    "server_name": "ai.ankimcp/anki-mcp-server",
+    "version": "0.22.5",
+    "registry_type": "npm",
+    "identifier": "@ankimcp/anki-mcp-server",
+    "cmd": [
+      "npx",
+      "-y",
+      "@ankimcp/anki-mcp-server@0.22.5"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/ankimcp/anki-mcp-server",
+    "server_version": "0.22.5",
+    "status": "active",
+    "published_at": "2026-07-21T18:58:14.907015Z"
+  },
+  {
+    "server_name": "ai.autoblocks/contextlayer-mcp",
+    "version": "0.0.3",
+    "registry_type": "npm",
+    "identifier": "@contextlayer/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@contextlayer/mcp@0.0.3"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/autoblocksai/ctxl",
+    "server_version": "0.0.3",
+    "status": "active",
+    "published_at": "2026-01-12T03:52:52.134106Z"
+  },
+  {
+    "server_name": "ai.autoblocks/ctxl",
+    "version": "0.0.2",
+    "registry_type": "npm",
+    "identifier": "ctxl",
+    "cmd": [
+      "npx",
+      "-y",
+      "ctxl@0.0.2"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/autoblocksai/ctxl",
+    "server_version": "0.0.2",
+    "status": "active",
+    "published_at": "2026-01-12T03:52:12.746584Z"
+  },
+  {
+    "server_name": "ai.autoblocks/ctxl-mcp",
+    "version": "0.0.2",
+    "registry_type": "npm",
+    "identifier": "ctxl-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "ctxl-mcp@0.0.2"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/autoblocksai/ctxl",
+    "server_version": "0.0.2",
+    "status": "active",
+    "published_at": "2026-01-12T03:52:19.009876Z"
+  },
+  {
+    "server_name": "ai.autonomad/computeback",
+    "version": "1.1.3",
+    "registry_type": "npm",
+    "identifier": "@autonomad1/computeback-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@autonomad1/computeback-mcp@1.1.3"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/Autonomad1/computeback-mcp",
+    "server_version": "1.1.3",
+    "status": "active",
+    "published_at": "2026-05-11T23:17:51.160439Z"
+  },
+  {
+    "server_name": "ai.autonomad/travel",
+    "version": "1.4.0",
+    "registry_type": "npm",
+    "identifier": "autonomad-travel",
+    "cmd": [
+      "npx",
+      "-y",
+      "autonomad-travel@1.4.0"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/Autonomad1/autonomad1",
+    "server_version": "1.4.0",
+    "status": "active",
+    "published_at": "2026-05-11T09:19:18.416611Z"
+  },
+  {
+    "server_name": "ai.bizmuse/bizmuse",
+    "version": "0.1.6",
+    "registry_type": "npm",
+    "identifier": "bizmuse-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "bizmuse-mcp@0.1.6"
+    ],
+    "required_env": [
+      "BIZMUSE_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": null,
+    "server_version": "0.1.6",
+    "status": "active",
+    "published_at": "2026-07-20T13:46:35.915847Z"
+  },
+  {
+    "server_name": "ai.bolthub/mcp",
+    "version": "0.7.2",
+    "registry_type": "npm",
+    "identifier": "@bolthub/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@bolthub/mcp@0.7.2"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/signaltech-org/bolthub-sdk",
+    "server_version": "0.7.2",
+    "status": "active",
+    "published_at": "2026-07-25T02:10:18.959626Z"
+  },
+  {
+    "server_name": "ai.bolthub/registry",
+    "version": "0.1.6",
+    "registry_type": "npm",
+    "identifier": "@bolthub/mcp-registry",
+    "cmd": [
+      "npx",
+      "-y",
+      "@bolthub/mcp-registry@0.1.6"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/signaltech-org/bolthub-sdk",
+    "server_version": "0.1.6",
+    "status": "deprecated",
+    "published_at": "2026-06-12T04:34:33.335941Z"
+  },
+  {
+    "server_name": "ai.bourdon/bourdon",
+    "version": "0.2.0",
+    "registry_type": "npm",
+    "identifier": "@getbourdon/mcp-server",
+    "cmd": [
+      "npx",
+      "-y",
+      "@getbourdon/mcp-server@0.2.0"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": null,
+    "server_version": "0.12.5",
+    "status": "active",
+    "published_at": "2026-07-28T01:50:16.174926Z"
+  },
+  {
+    "server_name": "ai.bowmark/bowmark",
+    "version": "2.0.0",
+    "registry_type": "npm",
+    "identifier": "bowmark-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "bowmark-mcp@2.0.0"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/bowmark-ai/skill",
+    "server_version": "8.3.29",
+    "status": "active",
+    "published_at": "2026-08-03T15:12:46.715435Z"
+  },
+  {
+    "server_name": "ai.buywhere/buywhere-mcp",
+    "version": "0.3.1",
+    "registry_type": "npm",
+    "identifier": "@buywhere/mcp-server",
+    "cmd": [
+      "npx",
+      "-y",
+      "@buywhere/mcp-server@0.3.1"
+    ],
+    "required_env": [
+      "BUYWHERE_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/BuyWhere/buywhere-mcp",
+    "server_version": "0.3.1",
+    "status": "active",
+    "published_at": "2026-05-03T21:45:08.750713Z"
+  },
+  {
+    "server_name": "ai.callmcp/server",
+    "version": "0.1.2",
+    "registry_type": "npm",
+    "identifier": "@callmcp/server",
+    "cmd": [
+      "npx",
+      "-y",
+      "@callmcp/server@0.1.2"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/CallMCP/callmcp",
+    "server_version": "0.1.2",
+    "status": "active",
+    "published_at": "2026-07-10T00:53:26.478263Z"
+  },
+  {
+    "server_name": "ai.certscore/mcp",
+    "version": "0.2.4",
+    "registry_type": "npm",
+    "identifier": "@certscore/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@certscore/mcp@0.2.4"
+    ],
+    "required_env": [
+      "CERTSCORE_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/ergoveritas1-alt/certscore.ai",
+    "server_version": "0.2.4",
+    "status": "active",
+    "published_at": "2026-07-07T21:17:12.620633Z"
+  },
+  {
+    "server_name": "ai.chronary/mcp",
+    "version": "1.5.2",
+    "registry_type": "npm",
+    "identifier": "@chronary/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@chronary/mcp@1.5.2"
+    ],
+    "required_env": [
+      "CHRONARY_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/Chronary/chronary-mcp",
+    "server_version": "1.5.2",
+    "status": "active",
+    "published_at": "2026-07-14T21:12:59.153451Z"
+  },
+  {
+    "server_name": "ai.circulara/plugin",
+    "version": "0.1.2",
+    "registry_type": "npm",
+    "identifier": "@circulara/plugin",
+    "cmd": [
+      "npx",
+      "-y",
+      "@circulara/plugin@0.1.2"
+    ],
+    "required_env": [
+      "CIRCULARA_BACKEND_URL",
+      "CIRCULARA_TENANT_ID",
+      "CIRCULARA_TOKEN",
+      "CIRCULARA_SEAT_ID",
+      "CIRCULARA_USER_ID"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/CircularRoute/circulara-core",
+    "server_version": "0.1.2",
+    "status": "active",
+    "published_at": "2026-07-09T11:54:08.843062Z"
+  },
+  {
+    "server_name": "ai.clarx/mcp",
+    "version": "0.2.1",
+    "registry_type": "npm",
+    "identifier": "@clarxai/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@clarxai/mcp@0.2.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/Gernika-Labs/clarx-cloud",
+    "server_version": "0.2.1",
+    "status": "active",
+    "published_at": "2026-07-07T14:52:08.25611Z"
+  },
+  {
+    "server_name": "ai.clelp/clelp",
+    "version": "1.1.8",
+    "registry_type": "npm",
+    "identifier": "clelp-mcp-server",
+    "cmd": [
+      "npx",
+      "-y",
+      "clelp-mcp-server@1.1.8"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/oscarsterling/clelp-skills",
+    "server_version": "1.1.8",
+    "status": "active",
+    "published_at": "2026-08-01T18:45:56.210843Z"
+  },
+  {
+    "server_name": "ai.clize/clize",
+    "version": "0.23.1",
+    "registry_type": "npm",
+    "identifier": "@clize/clize",
+    "cmd": [
+      "npx",
+      "-y",
+      "@clize/clize@0.23.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/cooldk/clize-cli",
+    "server_version": "0.23.1",
+    "status": "active",
+    "published_at": "2026-07-17T06:17:17.687832Z"
+  },
+  {
+    "server_name": "ai.contio/meetingos",
+    "version": "1.0.1",
+    "registry_type": "npm",
+    "identifier": "@contio/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@contio/mcp@1.0.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": null,
+    "server_version": "1.0.3",
+    "status": "active",
+    "published_at": "2026-07-28T17:57:18.966342Z"
+  },
+  {
+    "server_name": "ai.cueapi/mcp",
+    "version": "0.1.3",
+    "registry_type": "npm",
+    "identifier": "@cueapi/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@cueapi/mcp@0.1.3"
+    ],
+    "required_env": [
+      "CUEAPI_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/cueapi/cueapi-mcp",
+    "server_version": "0.1.3",
+    "status": "active",
+    "published_at": "2026-04-15T19:01:06.819529Z"
+  },
+  {
+    "server_name": "ai.demomagic/interactive-video-guide",
+    "version": "0.1.0",
+    "registry_type": "npm",
+    "identifier": "@demomagic/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@demomagic/mcp@0.1.0"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": null,
+    "server_version": "0.1.0",
+    "status": "active",
+    "published_at": "2026-06-18T00:38:53.356402Z"
+  },
+  {
+    "server_name": "ai.dinglebear/apprise-rmcp",
+    "version": "0.1.3",
+    "registry_type": "npm",
+    "identifier": "apprise-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "apprise-rmcp@0.1.3"
+    ],
+    "required_env": [],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Apprise RMCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/apprise-rmcp",
+    "server_version": "0.1.3",
+    "status": "active",
+    "published_at": "2026-07-12T11:58:27.866195Z"
+  },
+  {
+    "server_name": "ai.dinglebear/arcane-rmcp",
+    "version": "0.4.2",
+    "registry_type": "npm",
+    "identifier": "arcane-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "arcane-rmcp@0.4.2"
+    ],
+    "required_env": [
+      "RARCANE_API_URL",
+      "RARCANE_API_KEY"
+    ],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Arcane RMCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/arcane-rmcp",
+    "server_version": "0.4.2",
+    "status": "active",
+    "published_at": "2026-07-12T11:58:28.276344Z"
+  },
+  {
+    "server_name": "ai.dinglebear/cortex",
+    "version": "3.11.2",
+    "registry_type": "npm",
+    "identifier": "@dinglebear/cortex",
+    "cmd": [
+      "npx",
+      "-y",
+      "@dinglebear/cortex@3.11.2"
+    ],
+    "required_env": [],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Cortex query-only stdio MCP mode.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/dinglebear-ai/cortex",
+    "server_version": "3.11.2",
+    "status": "active",
+    "published_at": "2026-08-03T03:26:56.422978Z"
+  },
+  {
+    "server_name": "ai.dinglebear/cortex-rmcp",
+    "version": "3.9.1",
+    "registry_type": "npm",
+    "identifier": "cortex-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "cortex-rmcp@3.9.1"
+    ],
+    "required_env": [],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Cortex query-only stdio MCP mode.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/cortex",
+    "server_version": "3.9.1",
+    "status": "active",
+    "published_at": "2026-07-12T11:58:28.58298Z"
+  },
+  {
+    "server_name": "ai.dinglebear/gotify-rmcp",
+    "version": "0.1.3",
+    "registry_type": "npm",
+    "identifier": "gotify-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "gotify-rmcp@0.1.3"
+    ],
+    "required_env": [
+      "GOTIFY_URL"
+    ],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Gotify RMCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/gotify-rmcp",
+    "server_version": "0.1.3",
+    "status": "active",
+    "published_at": "2026-07-12T11:58:28.849931Z"
+  },
+  {
+    "server_name": "ai.dinglebear/labby",
+    "version": "1.3.0",
+    "registry_type": "npm",
+    "identifier": "labby-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "labby-mcp@1.3.0"
+    ],
+    "required_env": [],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Labby's stdio MCP server entrypoint.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/labby",
+    "server_version": "1.3.0",
+    "status": "active",
+    "published_at": "2026-07-13T04:02:29.258343Z"
+  },
+  {
+    "server_name": "ai.dinglebear/runifi",
+    "version": "0.2.5",
+    "registry_type": "npm",
+    "identifier": "@dinglebear/runifi",
+    "cmd": [
+      "npx",
+      "-y",
+      "@dinglebear/runifi@0.2.5"
+    ],
+    "required_env": [
+      "UNIFI_URL",
+      "UNIFI_API_KEY"
+    ],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run UniFi RMCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/dinglebear-ai/runifi",
+    "server_version": "0.2.5",
+    "status": "active",
+    "published_at": "2026-08-03T03:17:11.386039Z"
+  },
+  {
+    "server_name": "ai.dinglebear/soma",
+    "version": "0.8.2",
+    "registry_type": "npm",
+    "identifier": "@dinglebear/soma",
+    "cmd": [
+      "npx",
+      "-y",
+      "@dinglebear/soma@0.8.2"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [
+      {
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/dinglebear-ai/soma",
+    "server_version": "0.8.2",
+    "status": "active",
+    "published_at": "2026-08-03T06:18:11.565062Z"
+  },
+  {
+    "server_name": "ai.dinglebear/synapse-rmcp",
+    "version": "0.5.4",
+    "registry_type": "npm",
+    "identifier": "synapse-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "synapse-rmcp@0.5.4"
+    ],
+    "required_env": [],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Synapse RMCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/synapse-rmcp",
+    "server_version": "0.5.4",
+    "status": "active",
+    "published_at": "2026-07-12T12:00:37.079017Z"
+  },
+  {
+    "server_name": "ai.dinglebear/tailscale-rmcp",
+    "version": "0.1.3",
+    "registry_type": "npm",
+    "identifier": "tailscale-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "tailscale-rmcp@0.1.3"
+    ],
+    "required_env": [
+      "TAILSCALE_API_KEY"
+    ],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Tailscale RMCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/tailscale-rmcp",
+    "server_version": "0.1.3",
+    "status": "active",
+    "published_at": "2026-07-12T12:00:37.314618Z"
+  },
+  {
+    "server_name": "ai.dinglebear/unifi-rmcp",
+    "version": "0.2.4",
+    "registry_type": "npm",
+    "identifier": "unifi-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "unifi-rmcp@0.2.4"
+    ],
+    "required_env": [
+      "UNIFI_URL",
+      "UNIFI_API_KEY"
+    ],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run UniFi RMCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/unifi-rmcp",
+    "server_version": "0.2.4",
+    "status": "active",
+    "published_at": "2026-07-12T12:00:37.570413Z"
+  },
+  {
+    "server_name": "ai.dinglebear/unraid-rmcp",
+    "version": "0.2.3",
+    "registry_type": "npm",
+    "identifier": "unraid-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "unraid-rmcp@0.2.3"
+    ],
+    "required_env": [
+      "UNRAID_API_URL",
+      "UNRAID_API_KEY"
+    ],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Unraid RMCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/unraid-rmcp",
+    "server_version": "0.2.3",
+    "status": "active",
+    "published_at": "2026-07-12T12:00:37.970335Z"
+  },
+  {
+    "server_name": "ai.dinglebear/yarr-mcp",
+    "version": "1.1.1",
+    "registry_type": "npm",
+    "identifier": "yarr-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "yarr-mcp@1.1.1"
+    ],
+    "required_env": [],
+    "required_args": [
+      "mcp"
+    ],
+    "package_arguments": [
+      {
+        "description": "Run Yarr MCP over stdio.",
+        "isRequired": true,
+        "format": "string",
+        "value": "mcp",
+        "type": "positional"
+      }
+    ],
+    "repository_url": "https://github.com/jmagar/yarr",
+    "server_version": "1.1.1",
+    "status": "active",
+    "published_at": "2026-07-12T12:00:38.673496Z"
+  },
+  {
+    "server_name": "ai.dinglebear/ytdl-rmcp",
+    "version": "1.0.2",
+    "registry_type": "npm",
+    "identifier": "ytdl-rmcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "ytdl-rmcp@1.0.2"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/jmagar/ytdl-rmcp",
+    "server_version": "1.0.2",
+    "status": "active",
+    "published_at": "2026-07-12T12:00:38.93391Z"
+  },
+  {
+    "server_name": "ai.fodda/mcp-server",
+    "version": "1.32.1",
+    "registry_type": "npm",
+    "identifier": "fodda-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "fodda-mcp@1.32.1"
+    ],
+    "required_env": [
+      "FODDA_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/piers-fawkes/fodda-mcp",
+    "server_version": "1.32.1",
+    "status": "active",
+    "published_at": "2026-07-03T14:25:57.93371Z"
+  },
+  {
+    "server_name": "ai.foura/mcp",
+    "version": "0.5.0",
+    "registry_type": "npm",
+    "identifier": "@fouradata/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@fouradata/mcp@0.5.0"
+    ],
+    "required_env": [
+      "FOURA_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/fouradata/mcp",
+    "server_version": "0.5.0",
+    "status": "active",
+    "published_at": "2026-07-13T12:15:46.838999Z"
+  },
+  {
+    "server_name": "ai.gency/gency-mcp",
+    "version": "0.6.0",
+    "registry_type": "npm",
+    "identifier": "@gency-ai/gency-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@gency-ai/gency-mcp@0.6.0"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/studiolab-dev/gency-mcp",
+    "server_version": "0.6.0",
+    "status": "active",
+    "published_at": "2026-07-30T05:27:57.913035Z"
+  },
+  {
+    "server_name": "ai.getoptimal/optibot",
+    "version": "1.4.1",
+    "registry_type": "npm",
+    "identifier": "@optimalai/optibot-mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@optimalai/optibot-mcp@1.4.1"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": null,
+    "server_version": "1.4.1",
+    "status": "active",
+    "published_at": "2026-06-04T15:48:15.016308Z"
+  },
+  {
+    "server_name": "ai.getvet/vet",
+    "version": "0.4.2",
+    "registry_type": "npm",
+    "identifier": "@getvetai/mcp",
+    "cmd": [
+      "npx",
+      "-y",
+      "@getvetai/mcp@0.4.2"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/getvetai/vet",
+    "server_version": "0.4.2",
+    "status": "active",
+    "published_at": "2026-06-15T21:29:47.444351Z"
+  },
+  {
+    "server_name": "ai.i18nagent/i18n-agent",
+    "version": "1.16.3",
+    "registry_type": "npm",
+    "identifier": "@i18n-agent/mcp-client",
+    "cmd": [
+      "npx",
+      "-y",
+      "@i18n-agent/mcp-client@1.16.3"
+    ],
+    "required_env": [
+      "I18N_AGENT_API_KEY"
+    ],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/i18n-agent/mcp-client",
+    "server_version": "1.16.3",
+    "status": "active",
+    "published_at": "2026-03-16T10:02:49.134686Z"
+  },
+  {
+    "server_name": "ai.imboard/dossier",
+    "version": "1.0.4",
+    "registry_type": "npm",
+    "identifier": "@ai-dossier/mcp-server",
+    "cmd": [
+      "npx",
+      "-y",
+      "@ai-dossier/mcp-server@1.0.4"
+    ],
+    "required_env": [],
+    "required_args": [],
+    "package_arguments": [],
+    "repository_url": "https://github.com/imboard-ai/ai-dossier",
+    "server_version": "1.0.4",
+    "status": "active",
+    "published_at": "2026-03-07T09:20:43.263852Z"
+  }
+]

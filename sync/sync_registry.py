@@ -15,8 +15,14 @@ OFFICIAL_META = "io.modelcontextprotocol.registry/official"
 USER_AGENT = "mcpwatch-sync/0.1 (+https://github.com/mcpwatch)"
 
 
-def fetch_page(cursor=None, limit=100, retries=4):
+def fetch_page(cursor=None, limit=100, retries=4, latest_only=True):
+    # Server-side latest filter. Without it the API pages through every historical
+    # version -- a single publisher with 400 releases costs 4 pages on its own.
+    # The client-side isLatest check in sync() still runs; this is an optimisation,
+    # not the correctness boundary.
     url = f"{REGISTRY}?limit={limit}"
+    if latest_only:
+        url += "&version=latest"
     if cursor:
         url += "&cursor=" + urllib.parse.quote(cursor, safe="")
     last = None
