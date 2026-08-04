@@ -108,15 +108,25 @@ class Probe:
         self.q = queue.Queue()
         self.stderr_buf = []
         self.stdout_polluted = False
+        self.reader_error = None
 
     def _reader(self, stream, q):
-        for line in stream:
-            q.put(line)
-        q.put(None)
+        # try/finally: if this thread dies the sentinel must still land, or recv()
+        # blocks for the full budget and books a dead stream as INIT_TIMEOUT.
+        try:
+            for line in stream:
+                q.put(line)
+        except (ValueError, OSError, UnicodeError) as e:
+            self.reader_error = repr(e)
+        finally:
+            q.put(None)
 
     def _stderr_reader(self, stream):
-        for line in stream:
-            self.stderr_buf.append(line.rstrip())
+        try:
+            for line in stream:
+                self.stderr_buf.append(line.rstrip())
+        except (ValueError, OSError, UnicodeError):
+            pass
 
     def stderr_tail(self, head=10, tail=8, width=2000):
         """Fatal diagnostics land at the START of stderr; chatty servers then bury
@@ -130,9 +140,14 @@ class Probe:
         return out[:width]
 
     def start(self):
+        # text=True alone decodes with the LOCALE codec (cp1252 on Windows), which
+        # dies on any byte outside it. The MCP spec says UTF-8; servers that emit
+        # something else are a finding, not a crash -- replace and carry on. The
+        # replacement chars make the line unparseable, so it lands in stdout_polluted.
         self.proc = subprocess.Popen(
             self.cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, bufsize=1, env=self.env,
+            encoding="utf-8", errors="replace",
         )
         threading.Thread(target=self._reader, args=(self.proc.stdout, self.q), daemon=True).start()
         threading.Thread(target=self._stderr_reader, args=(self.proc.stderr,), daemon=True).start()
@@ -228,7 +243,8 @@ def npm_prewarm(spec, identifier, timeout=INSTALL_TIMEOUT):
         cp = subprocess.run(
             resolve_cmd(["npm", "install", "--prefix", tmp, "--no-audit", "--no-fund",
                          "--no-package-lock", "--loglevel", "error", spec]),
-            capture_output=True, text=True, timeout=timeout)
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=timeout)
         dt = int((time.time() - t0) * 1000)
         tail = (cp.stderr or "")[-1500:]
         if cp.returncode != 0:
