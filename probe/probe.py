@@ -463,6 +463,16 @@ def main():
     kw = dict(prewarm=not args.no_prewarm, install_timeout=args.install_timeout,
               boot_timeout=args.boot_timeout, hard_wall=args.hard_wall)
 
+    def flush(rows):
+        """Rewrite after every target. A shard killed by the job timeout must not
+        lose the work it already did -- writing once at the end throws away the
+        whole slice. Write-and-replace so a kill mid-write can't truncate the file.
+        """
+        tmp = args.out + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(rows, f, indent=2)
+        os.replace(tmp, args.out)
+
     out = []
     for i, t in enumerate(targets, 1):
         label = t.get("server_name") or t.get("identifier")
@@ -474,6 +484,7 @@ def main():
                    "error_class": "PROBE_EXCEPTION", "error_detail": repr(e)[:400],
                    "identifier": t.get("identifier"), "version": t.get("version")}
         out.append(res)
+        flush(out)
         status = "PASS" if res.get("ok") else f"FAIL[{res.get('error_class')}]"
         print(f"    {status}  install={res.get('t_install_ms')}ms boot={res.get('t_boot_ms')}ms "
               f"tools={res.get('t_tools_ms')}ms n={res.get('tool_count')}",
@@ -483,8 +494,7 @@ def main():
             marker = "ok" if got == t["_expect"] else f"FIXTURE MISMATCH (want {t['_expect']})"
             print(f"    fixture: {marker}", file=sys.stderr, flush=True)
 
-    with open(args.out, "w", encoding="utf-8") as f:
-        json.dump(out, f, indent=2)
+    flush(out)
     print(f"wrote {len(out)} results -> {args.out}", file=sys.stderr)
 
 
