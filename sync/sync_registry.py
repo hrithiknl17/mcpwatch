@@ -63,18 +63,48 @@ def required_names(items):
     return out
 
 
-def build_cmd(pkg):
-    """npx invocation pinned to the registry's declared version.
+def arg_tokens(a):
+    """Turn one packageArguments entry into CLI tokens, or None if we cannot.
 
-    runtimeHint is honoured when the publisher set one (some declare 'npx'
-    explicitly, a few declare 'node'); otherwise npx is the npm default.
+    The registry marks subcommands like {"isRequired": true, "value": "mcp"} --
+    that is the publisher TELLING us how to start the server, not asking us for a
+    secret. Dropping those launches the bare CLI, which prints its usage screen
+    and looks like a broken server. Only arguments with no supplyable value
+    (a filepath, a token) are genuinely un-probeable.
+    """
+    ty = (a.get("type") or "").strip()
+    name = a.get("name")
+    val = a.get("value", a.get("default"))
+    if val is not None:
+        return [name, str(val)] if name else [str(val)]
+    if name and (ty == "flag" or not (a.get("valueHint") or a.get("format"))):
+        return [name]            # bare switch, e.g. --start
+    return None                  # needs a human -> caller decides skip vs omit
+
+
+def build_args(pkg):
+    """(tokens to append, names of required args we cannot supply)."""
+    tokens, unsupplyable = [], []
+    for a in pkg.get("packageArguments") or []:
+        t = arg_tokens(a)
+        if t is None:
+            if a.get("isRequired"):
+                unsupplyable.append(a.get("name") or a.get("valueHint") or "?")
+            continue             # optional and unguessable -> just omit it
+        tokens += t
+    return tokens, unsupplyable
+
+
+def build_cmd(pkg, args_tokens):
+    """npx invocation pinned to the registry's declared version, plus declared args.
+
+    runtimeHint is recorded but NOT executed. Publishers put things in it that are
+    not commands at all ('node >=22.6.0', 'node>=16, python>=3.8'), and these are
+    npm packages regardless -- npx is the runner that actually resolves them.
     """
     ident, version = pkg["identifier"], pkg.get("version")
     spec = f"{ident}@{version}" if version else ident
-    hint = (pkg.get("runtimeHint") or "npx").strip()
-    if hint in ("npx", "npm", "node", ""):
-        return ["npx", "-y", spec]
-    return [hint, "-y", spec]
+    return ["npx", "-y", spec] + args_tokens
 
 
 def targets_from_entry(entry):
@@ -92,13 +122,17 @@ def targets_from_entry(entry):
         if not pkg.get("identifier"):
             continue
         req_env = required_names(pkg.get("environmentVariables"))
-        req_args = required_names(pkg.get("packageArguments")) + required_names(pkg.get("runtimeArguments"))
+        arg_toks, req_args = build_args(pkg)
+        rt_toks, rt_unsup = build_args({"packageArguments": pkg.get("runtimeArguments")})
+        req_args += rt_unsup
         out.append({
             "server_name": name,
             "version": pkg.get("version") or srv.get("version"),
             "registry_type": "npm",
             "identifier": pkg["identifier"],
-            "cmd": build_cmd(pkg),
+            "cmd": build_cmd(pkg, rt_toks + arg_toks),
+            "args": rt_toks + arg_toks,
+            "runtime_hint": pkg.get("runtimeHint"),
             "required_env": req_env,
             "required_args": req_args,
             "package_arguments": pkg.get("packageArguments") or [],

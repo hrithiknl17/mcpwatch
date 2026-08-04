@@ -245,7 +245,7 @@ def npm_prewarm(spec, identifier, timeout=INSTALL_TIMEOUT):
         return False, int((time.time() - t0) * 1000), f"COMMAND_NOT_FOUND: {e}", None, None
 
 
-def probe(name, cmd, env=None, spec=None, identifier=None, prewarm=True,
+def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewarm=True,
           install_timeout=INSTALL_TIMEOUT, boot_timeout=BOOT_TIMEOUT,
           rpc_timeout=RPC_TIMEOUT, hard_wall=HARD_WALL_S):
     r = {
@@ -281,8 +281,10 @@ def probe(name, cmd, env=None, spec=None, identifier=None, prewarm=True,
                      error_detail=tail[:600], error_stderr=tail[-600:])
             return r
         if entry:
-            # run the package we just installed -- no npx re-resolution
-            cmd = ["node", entry]
+            # run the package we just installed -- no npx re-resolution. The
+            # registry's declared args must ride along, or a server whose stdio
+            # mode is a subcommand just prints its usage screen and looks broken.
+            cmd = ["node", entry] + list(extra_args)
             r["prewarmed"] = True
             r["spawn_mode"] = "node-entrypoint"
         else:
@@ -429,7 +431,8 @@ def probe_target(t, **kw):
         }
     ident, ver = t.get("identifier"), t.get("version")
     spec = f"{ident}@{ver}" if ident and ver else ident
-    r = probe(name, t.get("cmd"), env=t.get("env"), spec=spec, identifier=ident, **kw)
+    r = probe(name, t.get("cmd"), env=t.get("env"), spec=spec, identifier=ident,
+              extra_args=t.get("args") or [], **kw)
     r.update(skipped=False, identifier=ident, version=ver)
     return r
 
@@ -442,6 +445,8 @@ def main():
     ap.add_argument("--out", default="results.json")
     ap.add_argument("--limit", type=int, default=None, help="cap targets (local sweeps)")
     ap.add_argument("--no-fixtures", action="store_true")
+    ap.add_argument("--resume", action="store_true",
+                    help="keep rows already in --out and probe only what is missing")
     ap.add_argument("--no-prewarm", action="store_true", help="fold install back into boot")
     ap.add_argument("--install-timeout", type=int, default=INSTALL_TIMEOUT)
     ap.add_argument("--boot-timeout", type=int, default=BOOT_TIMEOUT)
@@ -452,8 +457,6 @@ def main():
         with open(args.targets, encoding="utf-8") as f:
             all_targets = json.load(f)
         targets = [t for i, t in enumerate(all_targets) if i % args.of == args.shard]
-        if args.limit:
-            targets = targets[:args.limit]
     else:
         targets = []
     # fixtures ride shard 0 only, so a 20-way matrix doesn't probe them 20 times
@@ -474,6 +477,22 @@ def main():
         os.replace(tmp, args.out)
 
     out = []
+    if args.resume and os.path.isfile(args.out):
+        with open(args.out, encoding="utf-8") as f:
+            out = json.load(f)
+        done = {(r.get("server"), r.get("identifier")) for r in out}
+        before = len(targets)
+        targets = [t for t in targets
+                   if (t.get("server_name") or t.get("identifier"), t.get("identifier")) not in done]
+        print(f"resume: {len(out)} already probed, {len(targets)}/{before} remaining",
+              file=sys.stderr, flush=True)
+
+    # applied last, so --limit means "probe up to N MORE this run". Applying it
+    # before the resume filter would just re-select already-finished targets and
+    # do nothing, which is exactly the trap that ate one chunk.
+    if args.limit:
+        targets = targets[:args.limit]
+
     for i, t in enumerate(targets, 1):
         label = t.get("server_name") or t.get("identifier")
         print(f"[{i}/{len(targets)}] → {label}", file=sys.stderr, flush=True)
