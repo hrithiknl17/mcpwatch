@@ -6,3 +6,4 @@ results*.json
 node_modules/
 .venv/
 *.log
+*.state.json

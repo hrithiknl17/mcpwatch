@@ -146,24 +146,61 @@ def targets_from_entry(entry):
     return out
 
 
-def sync(max_pages=None):
-    total = latest = 0
+def state_path(out):
+    return out + ".state.json"
+
+
+def save_state(out, cursor, targets, stats):
+    """Checkpoint mid-sync. ~200 sequential pages at ~21s each is a long window
+    to lose to one interruption, and a CI job that dies at page 190 with nothing
+    on disk has to start over. Write-and-replace so a kill can't truncate it."""
+    tmp = state_path(out) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"cursor": cursor, "targets": targets, "stats": stats}, f)
+    os.replace(tmp, state_path(out))
+
+
+def sync(out, max_pages=None, resume=False, checkpoint_every=20, verbose=True):
     targets, seen = [], set()
-    dupes = 0
-    for entry in iter_servers(max_pages=max_pages):
-        total += 1
-        meta = (entry.get("_meta") or {}).get(OFFICIAL_META) or {}
-        if not meta.get("isLatest"):
-            continue
-        latest += 1
-        for t in targets_from_entry(entry):
-            key = (t["server_name"], t["identifier"], t["version"])
-            if key in seen:
-                dupes += 1
+    stats = {"total_versions": 0, "latest": 0, "dupes_dropped": 0}
+    cursor, page = None, 0
+
+    if resume and os.path.isfile(state_path(out)):
+        with open(state_path(out), encoding="utf-8") as f:
+            st = json.load(f)
+        targets, cursor, stats = st["targets"], st["cursor"], st["stats"]
+        seen = {(t["server_name"], t["identifier"], t["version"]) for t in targets}
+        print(f"resume: {len(targets)} targets carried, cursor={cursor}",
+              file=sys.stderr, flush=True)
+
+    while True:
+        data = fetch_page(cursor)
+        entries = data.get("servers", [])
+        for entry in entries:
+            stats["total_versions"] += 1
+            meta = (entry.get("_meta") or {}).get(OFFICIAL_META) or {}
+            if not meta.get("isLatest"):
                 continue
-            seen.add(key)
-            targets.append(t)
-    return targets, {"total_versions": total, "latest": latest, "dupes_dropped": dupes}
+            stats["latest"] += 1
+            for t in targets_from_entry(entry):
+                key = (t["server_name"], t["identifier"], t["version"])
+                if key in seen:
+                    stats["dupes_dropped"] += 1
+                    continue
+                seen.add(key)
+                targets.append(t)
+        page += 1
+        if verbose:
+            print(f"  page {page}: {len(entries)} entries ({len(targets)} targets)",
+                  file=sys.stderr, flush=True)
+        cursor = (data.get("metadata") or {}).get("nextCursor")
+        if cursor and page % checkpoint_every == 0:
+            save_state(out, cursor, targets, stats)
+        if not cursor or not entries:
+            break
+        if max_pages and page >= max_pages:
+            break
+    return targets, stats
 
 
 def upsert_pg(targets):
@@ -213,10 +250,14 @@ def main():
     ap.add_argument("--out", default="targets.json")
     ap.add_argument("--max-pages", type=int, default=None, help="debug: stop early")
     ap.add_argument("--no-db", action="store_true")
+    ap.add_argument("--resume", action="store_true",
+                    help="continue from the last checkpoint instead of page 1")
+    ap.add_argument("--checkpoint-every", type=int, default=20)
     args = ap.parse_args()
 
     print("syncing registry ...", file=sys.stderr)
-    targets, stats = sync(max_pages=args.max_pages)
+    targets, stats = sync(args.out, max_pages=args.max_pages, resume=args.resume,
+                          checkpoint_every=args.checkpoint_every)
 
     needs_creds = [t for t in targets if t["required_env"] or t["required_args"]]
     probeable = len(targets) - len(needs_creds)
@@ -224,6 +265,8 @@ def main():
 
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(targets, f, indent=2)
+    if os.path.isfile(state_path(args.out)):
+        os.remove(state_path(args.out))   # completed: checkpoint is now stale
 
     print(f"""
 registry sync summary
