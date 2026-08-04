@@ -1,0 +1,185 @@
+name: mcpwatch sweep
+
+# WHY THIS RUNS IN CI AT ALL
+#
+# Not for parallelism. Isolation.
+#
+# Every probe installs and executes code from a publisher nobody vetted. Even
+# with --ignore-scripts the server process itself runs. Doing that on a
+# long-lived box means one hostile package persists into every later probe and
+# poisons the dataset it produced.
+#
+# A GitHub-hosted runner gives a fresh VM per job, destroyed when the job ends.
+# That property is the point:
+#   - no credentials are present, so nothing can be exfiltrated (see `env:` below)
+#   - no state survives a job, so one bad package cannot influence the next shard
+#   - a compromised runner is discarded within minutes
+#
+# Do not "optimise" this into a self-hosted runner or a long-lived worker. The
+# disposability is the security model, and the parallelism is a side effect.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "shard count (matrix size)"
+        default: "20"
+      limit:
+        description: "cap targets per shard (0 = no cap, for smoke runs)"
+        default: "0"
+  schedule:
+    # 03:17 UTC -- off-peak, and deliberately not on the hour: the registry is
+    # rate-limited and everyone else's cron fires at :00.
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  # a sweep takes hours; never let two overlap and double-write the same run
+  group: mcpwatch-sweep
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: sync registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 90        # ~200 sequential pages at ~21s; cursor paging cannot be parallelised
+    outputs:
+      matrix: ${{ steps.shard.outputs.matrix }}
+      target_count: ${{ steps.shard.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync registry
+        # HTTP GETs only, no package code executes here. Checkpoints every 20
+        # pages, so a retry resumes instead of restarting an hour of paging.
+        run: python -u sync/sync_registry.py --out targets.json --no-db --resume
+
+      - name: Build shard matrix
+        id: shard
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int("${{ github.event.inputs.shards }}" or 20)
+          count = len(json.load(open("targets.json")))
+          print("matrix=" + json.dumps({"shard": list(range(n))}))
+          print("count=%d" % count)
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: targets
+          path: targets.json
+          retention-days: 7
+
+  probe:
+    name: probe shard ${{ matrix.shard }}
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 330       # under the 360 job ceiling, leaving room to upload
+    strategy:
+      fail-fast: false         # a crashing server is DATA. One bad shard must
+                               # never cancel the other nineteen.
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    env:
+      # Deliberately empty. Probing must never see a real credential: a server
+      # that finds one could use it, and a server that is *given* one would be
+      # measured under conditions no ordinary user has. Servers needing
+      # credentials are classified, not satisfied.
+      NODE_OPTIONS: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: targets
+
+      - name: Probe shard
+        # continue-on-error: individual target failures are the measurement, not
+        # a build break. Only infrastructure faults should fail this step, and
+        # probe.py already isolates per-target exceptions into PROBE_EXCEPTION.
+        continue-on-error: true
+        run: |
+          LIMIT=""
+          if [ "${{ github.event.inputs.limit }}" != "0" ] && [ -n "${{ github.event.inputs.limit }}" ]; then
+            LIMIT="--limit ${{ github.event.inputs.limit }}"
+          fi
+          python -u probe/probe.py \
+            --targets targets.json \
+            --shard ${{ matrix.shard }} \
+            --of ${{ strategy.job-total }} \
+            --out results-${{ matrix.shard }}.json \
+            --resume $LIMIT
+
+      - name: Upload shard results
+        # if: always() -- a shard that hit the timeout still holds every result
+        # it flushed before dying, and those are real measurements.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.shard }}
+          path: results-${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  collect:
+    name: merge and report
+    needs: [plan, probe]
+    if: always()               # report on what completed even if shards died
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: results-*
+          merge-multiple: true
+          path: results/
+      - uses: actions/download-artifact@v4
+        with:
+          name: targets
+
+      - name: Analyse
+        # analyze.py exits 1 if a fixture misclassified -- that means the probe
+        # itself is wrong and the run's numbers must not be published.
+        run: |
+          python analyze.py "results/results-*.json" \
+            --targets targets.json \
+            --json summary.json | tee summary.txt
+          {
+            echo '### MCPwatch sweep'
+            echo '```'
+            cat summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Audit sample for the credential heuristic
+        # The UNDECLARED_* classes are a stderr heuristic. Emit a sample every
+        # run so accuracy is measured by hand and published beside the stat.
+        if: always()
+        run: |
+          python sample_undeclared.py "results/results-*.json" -n 20 > audit-sample.txt || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sweep-summary
+          path: |
+            summary.json
+            summary.txt
+            audit-sample.txt
+          retention-days: 90
