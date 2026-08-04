@@ -11,13 +11,24 @@ has to survive a hostile reading.
 import argparse, glob, json, statistics as st, sys
 from collections import Counter, defaultdict
 
-# Buckets that are NOT failures and must never enter the denominator (gotcha 1).
-CRED_CLASSES = ("SKIPPED_NEEDS_CREDENTIALS", "UNDECLARED_CREDENTIALS")
+# Buckets kept OUT of the denominator: the server is not broken, it is unconfigured.
+# Each needs something from the operator that a blind probe cannot supply, so
+# counting them as failures would overstate the headline (gotcha 1, generalised).
+# The declared/undeclared split is the interesting part -- undeclared means the
+# registry metadata is wrong, which is a finding in its own right.
+EXCLUDED = {
+    "SKIPPED_NEEDS_CREDENTIALS": "credentials declared",
+    "UNDECLARED_CREDENTIALS":    "credentials UNDECLARED",
+    "UNDECLARED_ARGS":           "args UNDECLARED (printed usage)",
+    "NEEDS_LOCAL_SETUP":         "local setup (config/vault dir)",
+}
 
+# NO_ENTRYPOINT stays a failure on purpose: nothing the operator supplies fixes a
+# package that ships no runnable binary. It is the most actionable class here.
 # Fixed order so the block reads the same every run rather than reshuffling by count.
-CLASS_ORDER = ["PASS", "INSTALL_FAILED", "CRASH_ON_START", "INIT_TIMEOUT",
-               "INIT_RPC_ERROR", "ZERO_TOOLS", "TOOLS_TIMEOUT", "TOOLS_RPC_ERROR",
-               "COMMAND_NOT_FOUND", "PROBE_EXCEPTION"]
+CLASS_ORDER = ["PASS", "INSTALL_FAILED", "INSTALL_TIMEOUT", "NO_ENTRYPOINT",
+               "CRASH_ON_START", "INIT_TIMEOUT", "INIT_RPC_ERROR", "ZERO_TOOLS",
+               "TOOLS_TIMEOUT", "TOOLS_RPC_ERROR", "COMMAND_NOT_FOUND", "PROBE_EXCEPTION"]
 
 
 def load(paths):
@@ -79,9 +90,8 @@ def main():
         if got != want:
             fixture_bad.append((r.get("server"), want, got))
 
-    declared = [r for r in rows if r.get("error_class") == "SKIPPED_NEEDS_CREDENTIALS"]
-    undeclared = [r for r in rows if r.get("error_class") == "UNDECLARED_CREDENTIALS"]
-    probeable = [r for r in rows if r.get("error_class") not in CRED_CLASSES]
+    excluded = {k: [r for r in rows if r.get("error_class") == k] for k in EXCLUDED}
+    probeable = [r for r in rows if r.get("error_class") not in EXCLUDED]
 
     counts = Counter("PASS" if r.get("ok") else (r.get("error_class") or "UNKNOWN")
                      for r in probeable)
@@ -107,8 +117,8 @@ def main():
     if coverage:
         out.append(coverage.rstrip("\n"))
     out.append("  Probeable:                          %d" % len(probeable))
-    out.append("  Skipped (credentials declared):     %d" % len(declared))
-    out.append("  Skipped (credentials undeclared):   %d" % len(undeclared))
+    for k, label in EXCLUDED.items():
+        out.append("  Excl. %-34s %d" % (label + ":", len(excluded[k])))
     out.append("")
     out.append("Of probeable:")
     for k in ordered:
@@ -150,18 +160,20 @@ def main():
         if top[0][1] / failures > 0.20:
             print("     ^ top publisher is >20% of failures -- report this alongside the rate",
                   file=sys.stderr)
-    if undeclared:
-        print("  NOTE: %d servers demanded credentials the registry never declared."
-              % len(undeclared), file=sys.stderr)
-        print("        They are excluded from the rate. That gap is itself a finding.",
+    meta_gap = len(excluded["UNDECLARED_CREDENTIALS"]) + len(excluded["UNDECLARED_ARGS"])
+    if meta_gap:
+        print("  NOTE: %d servers needed credentials or arguments the registry never" % meta_gap,
               file=sys.stderr)
+        print("        declared. Excluded from the rate -- that metadata gap is itself",
+              file=sys.stderr)
+        print("        a finding, and arguably the more interesting one.", file=sys.stderr)
 
     if args.as_json:
         with open(args.as_json, "w", encoding="utf-8") as f:
             json.dump({
                 "total_targets": total_line, "probed": len(rows),
-                "probeable": len(probeable), "skipped_declared": len(declared),
-                "skipped_undeclared": len(undeclared),
+                "probeable": len(probeable),
+                "excluded": {k: len(v) for k, v in excluded.items()},
                 "counts": dict(counts), "failures": failures,
                 "failure_rate": (failures / len(probeable)) if probeable else None,
                 "median_install_ms": mi, "median_boot_ms": mb,

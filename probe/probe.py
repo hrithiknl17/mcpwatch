@@ -34,7 +34,68 @@ _CRED_VERB = re.compile(
 def looks_like_missing_credentials(text):
     if not text:
         return False
+    if _OAUTH.search(text):          # an auth flow starting IS the missing credential
+        return True
     return bool(_CRED_NOUN.search(text) and _CRED_VERB.search(text))
+
+
+# A server that starts an interactive auth flow is waiting for a human, not broken.
+_OAUTH = re.compile(r"(oauth|device flow|device code|authoriz\w* (?:url|code)|"
+                    r"log ?in to|sign ?in to|not (?:logged|signed) in)", re.I)
+
+# npm/npx and the OS agreeing that the package exposes nothing runnable. This is a
+# genuine failure -- the package is unusable as published -- but it is NOT a crash,
+# and calling it one hides the most actionable finding in the set.
+_NO_ENTRY = re.compile(
+    r"(could not determine executable to run|is not recognized as an internal or external|"
+    r"command not found|no such file or directory.*bin|missing script|"
+    r"cannot find module .{0,80}(bin|cli|index)|npm ERR! could not determine)", re.I)
+
+# The binary printed its usage screen and exited: it needs a subcommand or argument
+# that the registry entry never declared in packageArguments. Requires two markers,
+# because a single "Usage:" also shows up inside ordinary error messages.
+_USAGE = re.compile(r"(display help for command|^\s*usage:|^\s*commands:|"
+                    r"\[options\]|--help\b|^\s*options:)", re.I | re.M)
+
+# Local filesystem setup the server expects to exist (config dir, vault, workspace).
+# Environment-dependent, exactly like credentials -- not the server being broken.
+_SETUP = re.compile(
+    r"((?:policy|config|vault|workspace|data|project)\s*(?:directory|dir|file|path|root)"
+    r".{0,40}(?:not found|missing|does not exist|could not|no such)|"
+    r"could not locate an? \w+ vault|no \w+ (?:vault|workspace) )", re.I)
+
+
+def looks_like_no_entrypoint(text):
+    return bool(text and _NO_ENTRY.search(text))
+
+
+def looks_like_needs_args(text):
+    """Two independent usage markers -- one alone is too weak to act on."""
+    if not text:
+        return False
+    return len(set(m.group(0).lower().strip() for m in _USAGE.finditer(text))) >= 2
+
+
+def looks_like_needs_setup(text):
+    return bool(text and _SETUP.search(text))
+
+
+def classify_prestart_stderr(text, default):
+    """Shared ordering for every pre-handshake failure path.
+
+    Order matters: entrypoint problems are checked first because a package with no
+    bin often ALSO prints usage; credentials before setup because an OAuth prompt
+    frequently mentions a config path too.
+    """
+    if looks_like_no_entrypoint(text):
+        return "NO_ENTRYPOINT"
+    if looks_like_missing_credentials(text):
+        return "UNDECLARED_CREDENTIALS"
+    if looks_like_needs_setup(text):
+        return "NEEDS_LOCAL_SETUP"
+    if looks_like_needs_args(text):
+        return "UNDECLARED_ARGS"
+    return default
 
 
 class Probe:
@@ -56,6 +117,17 @@ class Probe:
     def _stderr_reader(self, stream):
         for line in stream:
             self.stderr_buf.append(line.rstrip())
+
+    def stderr_tail(self, head=10, tail=8, width=2000):
+        """Fatal diagnostics land at the START of stderr; chatty servers then bury
+        them under banners and PATH dumps. Keeping only the tail loses the actual
+        error, so keep both ends and mark the elision."""
+        buf = [ln for ln in self.stderr_buf if ln.strip()]
+        if len(buf) <= head + tail:
+            out = "\n".join(buf)
+        else:
+            out = "\n".join(buf[:head] + [f"... [{len(buf) - head - tail} lines elided] ..."] + buf[-tail:])
+        return out[:width]
 
     def start(self):
         self.proc = subprocess.Popen(
@@ -165,7 +237,9 @@ def npm_prewarm(spec, identifier, timeout=INSTALL_TIMEOUT):
         return True, dt, tail, tmp, _entrypoint(tmp, identifier)
     except subprocess.TimeoutExpired:
         shutil.rmtree(tmp, ignore_errors=True)
-        return False, int((time.time() - t0) * 1000), f"npm install exceeded {timeout}s", None, None
+        # sentinel, not prose: the caller must tell a slow dep tree apart from a
+        # package that does not exist (gotcha 5 -- these are different findings)
+        return False, int((time.time() - t0) * 1000), f"__TIMEOUT__ npm install exceeded {timeout}s", None, None
     except FileNotFoundError as e:
         shutil.rmtree(tmp, ignore_errors=True)
         return False, int((time.time() - t0) * 1000), f"COMMAND_NOT_FOUND: {e}", None, None
@@ -195,7 +269,14 @@ def probe(name, cmd, env=None, spec=None, identifier=None, prewarm=True,
         r["t_install_ms"] = t_install
         if not ok:
             low = tail.lower()
-            cls = "COMMAND_NOT_FOUND" if "command_not_found" in low else "INSTALL_FAILED"
+            if tail.startswith("__TIMEOUT__"):
+                cls = "INSTALL_TIMEOUT"
+            elif "command_not_found" in low:
+                cls = "COMMAND_NOT_FOUND"
+            elif looks_like_no_entrypoint(tail):
+                cls = "NO_ENTRYPOINT"
+            else:
+                cls = "INSTALL_FAILED"
             r.update(stage_failed="install", error_class=cls,
                      error_detail=tail[:600], error_stderr=tail[-600:])
             return r
@@ -232,8 +313,9 @@ def probe(name, cmd, env=None, spec=None, identifier=None, prewarm=True,
         """Single exit path: stop the watchdog, publish the pollution flag, tear down."""
         watchdog.cancel()
         r["stdout_polluted"] = p.stdout_polluted
+        r["undeclared_creds"] = r["error_class"] == "UNDECLARED_CREDENTIALS"
         if r["error_stderr"] is None and p.stderr_buf:
-            r["error_stderr"] = "\n".join(p.stderr_buf[-8:])[-1500:]
+            r["error_stderr"] = p.stderr_tail()
         p.kill()
         if warm_dir:
             shutil.rmtree(warm_dir, ignore_errors=True)
@@ -254,21 +336,23 @@ def probe(name, cmd, env=None, spec=None, identifier=None, prewarm=True,
         # t_init_ms stays install+boot for continuity; t_boot_ms is the honest one
         r["t_init_ms"] = r["t_boot_ms"] + (r["t_install_ms"] or 0)
     except TimeoutError as e:
-        r.update(stage_failed="initialize", error_class="INIT_TIMEOUT", error_detail=str(e),
-                 error_stderr="\n".join(p.stderr_buf[-8:]))
+        tail = p.stderr_tail()
+        # a server hung waiting on an OAuth prompt is blocked on a human, not slow
+        cls = classify_prestart_stderr(tail, "INIT_TIMEOUT")
+        r.update(stage_failed="initialize", error_class=cls, error_detail=str(e),
+                 error_stderr=tail)
         return finish()
     except (ConnectionError, BrokenPipeError) as e:
-        tail = "\n".join(p.stderr_buf[-8:])
+        tail = p.stderr_tail()
         low = tail.lower()
         # after a successful prewarm the package demonstrably installs, so a death
         # here is a crash, not an install failure -- never misattribute it
-        cls = "CRASH_ON_START" if r["prewarmed"] else (
+        default = "CRASH_ON_START" if r["prewarmed"] else (
             "INSTALL_FAILED" if any(k in low for k in INSTALL_MARKERS) else "CRASH_ON_START")
         # the server told us what it wanted -- believe it over the registry metadata
-        if cls == "CRASH_ON_START" and looks_like_missing_credentials(tail):
-            cls = "UNDECLARED_CREDENTIALS"
-            r["undeclared_creds"] = True
-        r.update(stage_failed="initialize", error_class=cls, error_detail=(tail or str(e))[:600])
+        cls = classify_prestart_stderr(tail, default)
+        r.update(stage_failed="initialize", error_class=cls,
+                 error_detail=(tail or str(e))[:600], error_stderr=tail)
         return finish()
 
     if "error" in resp:
