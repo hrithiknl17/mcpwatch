@@ -8,6 +8,17 @@ import argparse, json, re, subprocess, sys, time, threading, queue, os, hashlib,
 
 PROTOCOL_VERSION = "2025-06-18"
 
+# Servers may gate tools on what the client advertises: server-everything hides
+# get-roots-list from a capability-less client, so an empty {} silently
+# undercounts tools and changes schema_hash. Cross-checked against the official
+# inspector, which sees 14 tools where a bare client sees 13.
+#
+# Only 'roots' is advertised, because it is the only one we can honestly serve
+# (with an empty list). Advertising sampling or elicitation would invite requests
+# we cannot answer, and the server would block waiting -- turning a healthy server
+# into a fake INIT_TIMEOUT.
+CLIENT_CAPS = {"roots": {"listChanged": False}}
+
 INSTALL_TIMEOUT = 120   # cap on npm install -- one fat dep tree must not eat a job
 BOOT_TIMEOUT = 45       # post-install: handshake budget for an already-cached package
 RPC_TIMEOUT = 20
@@ -160,6 +171,30 @@ class Probe:
         self.proc.stdin.write(json.dumps(obj) + "\n")
         self.proc.stdin.flush()
 
+    def _answer(self, msg):
+        """Minimal honest replies to server-initiated requests.
+
+        Only capabilities we can genuinely serve are advertised (see CLIENT_CAPS),
+        so this stays tiny. Anything else gets a proper method-not-found rather
+        than silence, which keeps the server moving instead of hanging.
+        """
+        method = msg.get("method")
+        if method == "roots/list":
+            result = {"roots": []}
+        elif method == "ping":
+            result = {}
+        else:
+            try:
+                self.send({"jsonrpc": "2.0", "id": msg["id"],
+                           "error": {"code": -32601, "message": f"{method} not supported"}})
+            except (BrokenPipeError, OSError):
+                pass
+            return
+        try:
+            self.send({"jsonrpc": "2.0", "id": msg["id"], "result": result})
+        except (BrokenPipeError, OSError):
+            pass
+
     def recv(self, want_id, timeout):
         """Read lines until we get a JSON-RPC response with the id we want.
         Servers legitimately interleave notifications and log noise on stdout."""
@@ -179,6 +214,12 @@ class Probe:
             except json.JSONDecodeError:
                 # non-JSON on stdout = spec violation, but not fatal. Track it.
                 self.stdout_polluted = True
+                continue
+            # Server->client REQUEST (has both method and id). A capability we
+            # advertise, we must actually answer -- an unanswered request leaves the
+            # server blocked and we would book it as INIT_TIMEOUT.
+            if msg.get("method") and msg.get("id") is not None:
+                self._answer(msg)
                 continue
             if msg.get("id") == want_id:
                 return msg
@@ -393,7 +434,7 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
     try:
         p.send({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
             "protocolVersion": PROTOCOL_VERSION,
-            "capabilities": {},
+            "capabilities": CLIENT_CAPS,
             "clientInfo": {"name": "mcpwatch-probe", "version": "0.1.0"},
         }})
         resp = p.recv(1, timeout=init_budget)
