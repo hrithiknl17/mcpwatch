@@ -14,7 +14,7 @@ context, so it does not get the top slot.
 
   python analyze.py "results-*.json" --targets targets.json
 """
-import argparse, glob, json, random, statistics as st, sys
+import argparse, glob, json, math, statistics as st, sys
 from collections import Counter, defaultdict
 
 # --- the four buckets -------------------------------------------------------
@@ -71,6 +71,59 @@ def load(paths):
 
 def pct(n, d):
     return f"{100.0 * n / d:.1f}%" if d else "-"
+
+
+def wilson(k, n, z=1.96):
+    """95% Wilson score interval for a proportion, as (lo%, hi%).
+
+    Wilson rather than the normal approximation: these buckets include small
+    counts, and the normal interval misbehaves badly near 0 and 1 -- it happily
+    reports a negative lower bound, which is indefensible in a published stat.
+    Wilson stays inside [0,1] and holds up at small n.
+
+    This covers sampling error only. It says nothing about the probe being
+    wrong, and the sweep is a census of the registry rather than a draw from
+    some larger population -- so read it as "how much would this move on a
+    re-run", not as a claim about servers that do not exist yet.
+    """
+    if n == 0:
+        return (0.0, 0.0)
+    p = k / n
+    d = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / d
+    half = (z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / d
+    return (max(0.0, (centre - half)) * 100, min(1.0, (centre + half)) * 100)
+
+
+def publisher_of(r):
+    return str(r.get("server", "?")).split("/")[0]
+
+
+def partition(rows):
+    """rows -> {bucket: [rows]} over adjudicated rows only."""
+    out = defaultdict(list)
+    for r in rows:
+        b = bucket_of(r)
+        if b is not None:
+            out[b].append(r)
+    return out
+
+
+def render_partition(rows, label, indent="  "):
+    """The four buckets with counts, percentages and 95% intervals."""
+    buckets = partition(rows)
+    n = sum(len(v) for v in buckets.values())
+    lines = ["%s(n=%d)" % (label, n), ""]
+    for b in (BUCKET_ZEROCONF, BUCKET_DECLARED, BUCKET_UNDECLARED, BUCKET_BROKEN):
+        k = len(buckets[b])
+        lo, hi = wilson(k, n)
+        lines.append("%s%-34s %5d  %6s  [%4.1f-%4.1f]" % (indent, b, k, pct(k, n), lo, hi))
+        if b == BUCKET_UNDECLARED and buckets[b]:
+            sub = Counter(r.get("error_class") for r in buckets[b])
+            for c in UNDECLARED_CLASSES:
+                if sub.get(c):
+                    lines.append("%s    %-30s %5d" % (indent, c.lower().replace("_", " "), sub[c]))
+    return lines, buckets, n
 
 
 def bucket_of(r):
@@ -133,16 +186,26 @@ def main():
         out.append("Probed: %d (%s)" % (len(rows), pct(len(rows), len(tgts))))
         out.append("")
 
-    out.append("Of %d servers probed:" % n)
+    out.append("%-36s %5s  %6s  %s" % ("Of all servers probed:", "n", "share", "95% CI"))
     out.append("")
-    for b in (BUCKET_ZEROCONF, BUCKET_DECLARED, BUCKET_UNDECLARED, BUCKET_BROKEN):
-        out.append("  %-34s %4d (%s)" % (b, len(buckets[b]), pct(len(buckets[b]), n)))
-        if b == BUCKET_UNDECLARED and buckets[b]:
-            sub = Counter(r.get("error_class") for r in buckets[b])
-            for k in UNDECLARED_CLASSES:
-                if sub.get(k):
-                    out.append("      %-30s %4d" % (k.lower().replace("_", " "), sub[k]))
+    main_lines, buckets, n = render_partition(adjudicated, "")
+    out += [l for l in main_lines[2:]]
     out.append("")
+
+    # Same partition with the single largest publisher removed. One prolific
+    # publisher moved the headline 26 points at n=50; at n=6694 the same thing
+    # can happen quietly, and it is the first thing a sceptical reader checks.
+    pubs = Counter(publisher_of(r) for r in adjudicated)
+    if pubs:
+        top_pub, top_n = pubs.most_common(1)[0]
+        if top_n > 1:
+            rest = [r for r in adjudicated if publisher_of(r) != top_pub]
+            sub_lines, _, n2 = render_partition(rest, "")
+            out.append("  Excluding the largest publisher (%s, %d entries, %s of all):"
+                       % (top_pub, top_n, pct(top_n, n)))
+            out.append("")
+            out += [l for l in sub_lines[2:]]
+            out.append("")
 
     if broken:
         out.append("  Broken outright, by class:")
@@ -204,6 +267,16 @@ def main():
                 "median_install_ms": mi, "median_boot_ms": mb,
                 "stdout_polluted": polluted, "distinct_schema_hashes": len(hashes),
                 "secondary_failure_rate": (len(broken) / len(probeable)) if probeable else None,
+                "bucket_ci95": {b: wilson(len(buckets[b]), n) for b in
+                                (BUCKET_ZEROCONF, BUCKET_DECLARED, BUCKET_UNDECLARED, BUCKET_BROKEN)},
+                "top_publisher": (lambda c: c.most_common(1)[0] if c else None)(
+                    Counter(publisher_of(r) for r in adjudicated)),
+                "buckets_excl_top_publisher": (lambda tp: {
+                    b: len(partition([r for r in adjudicated if publisher_of(r) != tp])[b])
+                    for b in (BUCKET_ZEROCONF, BUCKET_DECLARED, BUCKET_UNDECLARED, BUCKET_BROKEN)}
+                    if tp else None)(
+                    (lambda c: c.most_common(1)[0][0] if c else None)(
+                        Counter(publisher_of(r) for r in adjudicated))),
                 "fixtures_ok": not fixture_bad,
             }, f, indent=2)
 
