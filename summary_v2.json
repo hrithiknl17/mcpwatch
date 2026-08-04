@@ -1,0 +1,29 @@
+{
+  "total_targets": 6675,
+  "probed": 50,
+  "probeable": 29,
+  "excluded": {
+    "SKIPPED_NEEDS_CREDENTIALS": 16,
+    "UNDECLARED_CREDENTIALS": 1,
+    "UNDECLARED_ARGS": 2,
+    "NEEDS_LOCAL_SETUP": 2
+  },
+  "counts": {
+    "PASS": 23,
+    "CRASH_ON_START": 4,
+    "NO_ENTRYPOINT": 2
+  },
+  "failures": 6,
+  "failure_rate": 0.20689655172413793,
+  "median_install_ms": 10172,
+  "median_boot_ms": 699,
+  "stdout_polluted": 3,
+  "fixtures_ok": true,
+  "failure_concentration": {
+    "com.gadgethumans.swarm": 1,
+    "eu.ansvar": 1,
+    "io.github.Samarth-23-eng": 1,
+    "io.github.mrosnerr": 1,
+    "io.github.plasmate-labs": 1
+  }
+}
