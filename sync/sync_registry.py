@@ -136,6 +136,8 @@ def targets_from_entry(entry):
             "required_env": req_env,
             "required_args": req_args,
             "package_arguments": pkg.get("packageArguments") or [],
+            "description": srv.get("description"),
+            "title": srv.get("title"),
             "repository_url": (srv.get("repository") or {}).get("url"),
             "server_version": srv.get("version"),
             "status": meta.get("status"),

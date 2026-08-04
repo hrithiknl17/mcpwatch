@@ -87,6 +87,10 @@ def classify_prestart_stderr(text, default):
     bin often ALSO prints usage; credentials before setup because an OAuth prompt
     frequently mentions a config path too.
     """
+    # checked first: a native addon that never compiled reports itself as a plain
+    # module-not-found, which would otherwise read as NO_ENTRYPOINT or a crash
+    if text and _BUILD_MARKERS.search(text):
+        return "BUILD_SCRIPTS_REQUIRED"
     if looks_like_no_entrypoint(text):
         return "NO_ENTRYPOINT"
     if looks_like_missing_credentials(text):
@@ -197,8 +201,26 @@ def resolve_cmd(cmd):
     return [exe] + list(cmd[1:]) if exe else list(cmd)
 
 
+# Lifecycle scripts that would have produced the missing build output.
+BUILD_SCRIPTS = ("prepare", "prepack", "postinstall", "install", "build")
+
+# Native-addon and unbuilt-output signatures seen at spawn time once scripts are
+# skipped. These mean "this package needs its build step", not "this package crashed".
+_BUILD_MARKERS = re.compile(
+    r"(node-gyp|node_gyp|prebuild-install|bindings\.js|could not locate the bindings|"
+    r"was compiled against a different node\.js version|invalid elf header|"
+    r"\.node['\"]?\s*(?:is missing|not found)|NODE_MODULE_VERSION)", re.I)
+
+
 def _entrypoint(prefix, identifier):
-    """Resolve the installed package's bin script to an absolute path.
+    """Resolve the installed package's bin script.
+
+    Returns (path, why) where why is None on success, or a reason code:
+      'no-bin-declared'  package declares nothing runnable
+      'unbuilt'          bin IS declared but the file is absent and the package
+                         has a build lifecycle script -- i.e. --ignore-scripts
+                         suppressed the step that would have created it
+      'bin-missing'      declared but absent with no build script to explain it
 
     Spawning `node <script>` instead of `npx <spec>` is what makes t_boot_ms
     honest: npx keeps its own _npx cache and would re-resolve the package,
@@ -207,12 +229,12 @@ def _entrypoint(prefix, identifier):
     pkg_dir = os.path.join(prefix, "node_modules", *identifier.split("/"))
     pj = os.path.join(pkg_dir, "package.json")
     if not os.path.isfile(pj):
-        return None
+        return None, "no-bin-declared"
     try:
         with open(pj, encoding="utf-8") as f:
             meta = json.load(f)
     except (OSError, json.JSONDecodeError):
-        return None
+        return None, "no-bin-declared"
     binf = meta.get("bin")
     rel = None
     if isinstance(binf, str):
@@ -223,42 +245,54 @@ def _entrypoint(prefix, identifier):
     elif meta.get("main"):
         rel = meta["main"]
     if not rel:
-        return None
+        return None, "no-bin-declared"
     path = os.path.normpath(os.path.join(pkg_dir, rel))
-    return path if os.path.isfile(path) else None
+    if os.path.isfile(path):
+        return path, None
+    scripts = meta.get("scripts") or {}
+    if any(scripts.get(s) for s in BUILD_SCRIPTS):
+        return None, "unbuilt"
+    return None, "bin-missing"
 
 
 def npm_prewarm(spec, identifier, timeout=INSTALL_TIMEOUT):
     """Install `spec` into a throwaway prefix so the later spawn measures boot,
     not download. Returns (ok, t_install_ms, stderr_tail, prefix_dir, entrypoint).
 
-    Caller owns prefix_dir and must remove it. Lifecycle scripts are deliberately
-    NOT disabled -- npx would run them at spawn time anyway, and suppressing them
-    here would shift that cost into t_boot_ms and corrupt the split. Isolation
-    comes from the ephemeral VM, not from crippling the install.
+    Caller owns prefix_dir and must remove it.
+
+    --ignore-scripts is a security boundary, not an optimisation: postinstall
+    scripts from thousands of unvetted publishers would otherwise execute with
+    the runner's full privileges before we ever speak JSON-RPC, and they run even
+    for packages whose server never starts. Packages that genuinely need their
+    build step are detectable afterwards (see _entrypoint) and are reported as
+    BUILD_SCRIPTS_REQUIRED -- never folded into INSTALL_FAILED, because "we
+    declined to run your build" and "your package is broken" are different facts.
     """
     tmp = tempfile.mkdtemp(prefix="mcpwatch-warm-")
     t0 = time.time()
     try:
         cp = subprocess.run(
             resolve_cmd(["npm", "install", "--prefix", tmp, "--no-audit", "--no-fund",
-                         "--no-package-lock", "--loglevel", "error", spec]),
+                         "--no-package-lock", "--ignore-scripts",
+                         "--loglevel", "error", spec]),
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=timeout)
         dt = int((time.time() - t0) * 1000)
         tail = (cp.stderr or "")[-1500:]
         if cp.returncode != 0:
             shutil.rmtree(tmp, ignore_errors=True)
-            return False, dt, tail, None, None
-        return True, dt, tail, tmp, _entrypoint(tmp, identifier)
+            return False, dt, tail, None, (None, None)
+        entry, why = _entrypoint(tmp, identifier)
+        return True, dt, tail, tmp, (entry, why)
     except subprocess.TimeoutExpired:
         shutil.rmtree(tmp, ignore_errors=True)
         # sentinel, not prose: the caller must tell a slow dep tree apart from a
         # package that does not exist (gotcha 5 -- these are different findings)
-        return False, int((time.time() - t0) * 1000), f"__TIMEOUT__ npm install exceeded {timeout}s", None, None
+        return False, int((time.time() - t0) * 1000), f"__TIMEOUT__ npm install exceeded {timeout}s", None, (None, None)
     except FileNotFoundError as e:
         shutil.rmtree(tmp, ignore_errors=True)
-        return False, int((time.time() - t0) * 1000), f"COMMAND_NOT_FOUND: {e}", None, None
+        return False, int((time.time() - t0) * 1000), f"COMMAND_NOT_FOUND: {e}", None, (None, None)
 
 
 def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewarm=True,
@@ -270,7 +304,8 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
         "t_spawn_ms": None, "t_install_ms": None, "t_boot_ms": None,
         "t_init_ms": None, "t_tools_ms": None,
         "protocol_version": None, "server_info": None,
-        "tool_count": None, "tool_names": [], "schema_hash": None,
+        "tool_count": None, "tool_names": [], "tool_descriptions": {}, "schema_hash": None,
+        "entrypoint_status": None,
         "stdout_polluted": False, "prewarmed": False, "spawn_mode": "direct",
         "undeclared_creds": False,
         "probed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -281,8 +316,10 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
 
     # --- stage 0: install, timed separately from boot (gotcha 2) ---
     if prewarm and spec:
-        ok, t_install, tail, warm_dir, entry = npm_prewarm(spec, identifier, timeout=install_timeout)
+        ok, t_install, tail, warm_dir, (entry, why) = npm_prewarm(spec, identifier,
+                                                                  timeout=install_timeout)
         r["t_install_ms"] = t_install
+        r["entrypoint_status"] = why or "ok"
         if not ok:
             low = tail.lower()
             if tail.startswith("__TIMEOUT__"):
@@ -295,6 +332,16 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
                 cls = "INSTALL_FAILED"
             r.update(stage_failed="install", error_class=cls,
                      error_detail=tail[:600], error_stderr=tail[-600:])
+            return r
+        if why == "unbuilt":
+            # bin declared, file absent, package has a build lifecycle script.
+            # --ignore-scripts suppressed the step that would have produced it.
+            # Distinct from INSTALL_FAILED: the package may be perfectly fine.
+            r.update(stage_failed="install", error_class="BUILD_SCRIPTS_REQUIRED",
+                     error_detail="declared bin missing; package has a build script "
+                                  "that --ignore-scripts suppressed",
+                     error_stderr=tail[-600:] if tail else None)
+            shutil.rmtree(warm_dir, ignore_errors=True)
             return r
         if entry:
             # run the package we just installed -- no npx re-resolution. The
@@ -404,6 +451,10 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
     tools = resp.get("result", {}).get("tools", [])
     r["tool_count"] = len(tools)
     r["tool_names"] = sorted(t.get("name", "?") for t in tools)
+    # Full descriptions, verbatim and untruncated. Not analysed here -- this builds
+    # the longitudinal corpus so a later look at tool-description drift does not
+    # require re-sweeping the whole registry.
+    r["tool_descriptions"] = {t.get("name", "?"): t.get("description") for t in tools}
     # schema fingerprint -> lets you detect silent breaking changes between versions
     canonical = json.dumps(
         [{"name": t.get("name"), "schema": t.get("inputSchema")} for t in sorted(tools, key=lambda x: x.get("name", ""))],
