@@ -7,3 +7,5 @@ node_modules/
 .venv/
 *.log
 *.state.json
+targets*.json
+summary*.json
