@@ -34,12 +34,31 @@ INSTALL_MARKERS = ("e404", "404 not found", "npm error", "enoent", "could not de
 # server's own complaint. Deliberately conservative: a credential NOUN must appear
 # alongside a "missing/required" phrasing, because over-matching here deflates the
 # failure rate just as dishonestly as under-matching inflates it.
+# \b does NOT work here. In FINHAY_API_KEY the char before "API" is "_", which is a
+# word character, so \bapi never matches -- the heuristic silently failed on every
+# vendor-prefixed env var, which is most of them. Audit B put this at 2 of 5 leaks.
+# Explicit lookarounds treat "_" as a boundary; \b does not.
+_NB = r"(?<![A-Za-z0-9])"
+_NA = r"(?![A-Za-z0-9])"
+# A SCREAMING_SNAKE token is itself evidence of an env var being named.
+_ENVVAR = r"[A-Z][A-Z0-9]{2,}(?:_[A-Z0-9]+)+"
+# (?-i:) is load-bearing. These patterns compile with re.I, and a case-insensitive
+# SCREAMING_SNAKE alternative matches "node_modules" -- which appears in every Node
+# stack trace, and turned a plain ESM SyntaxError into a credential finding.
+_ENVVAR_CS = r"(?-i:" + _ENVVAR + r")"
 _CRED_NOUN = re.compile(
-    r"\b(env(?:ironment)?[ _-]?var\w*|api[ _-]?key|access[ _-]?key|secret|token|"
-    r"credential|wallet|password|passphrase|macaroon|private[ _-]?key|auth\w*)\b", re.I)
+    _NB + r"(env(?:ironment)?[ _-]?var\w*|api[ _-]?key|access[ _-]?key|secret|token|"
+    r"credential|wallet|password|passphrase|macaroon|private[ _-]?key|auth\w*)" + _NA
+    + r"|" + _ENVVAR_CS, re.I)
 _CRED_VERB = re.compile(
     r"(is required|are required|required\b|missing|not set|must be set|not configured|"
-    r"no .{0,20}configured|set one of|please set|unset|provide a|expected .{0,20}to be set)", re.I)
+    r"no .{0,20}configured|set one of|please set|unset|expected .{0,20}to be set|"
+    # bare "provide a" matched "does not provide an export named ...", an ordinary
+    # ESM error. Require a credential-shaped object.
+    r"provide (?:a|an|the) [^.\n]{0,24}(?:key|token|secret|credential|password)|"
+    # from Audit B: bare imperative "Set FOO_BAR ...", and "X does not point to ..."
+    r"\bset " + _ENVVAR_CS + r"|does not point to|no .{0,25}(?:found|configured|set)|"
+    r"\bconfigure " + _ENVVAR_CS + r")", re.I)
 
 
 def looks_like_missing_credentials(text):
@@ -73,7 +92,10 @@ _USAGE = re.compile(r"(display help for command|^\s*usage:|^\s*commands:|"
 _SETUP = re.compile(
     r"((?:policy|config|vault|workspace|data|project)\s*(?:directory|dir|file|path|root)"
     r".{0,40}(?:not found|missing|does not exist|could not|no such)|"
-    r"could not locate an? \w+ vault|no \w+ (?:vault|workspace) )", re.I)
+    r"could not locate an? \w+ vault|"
+    # Audit B: "No vault." with nothing between, and "No <name> config found in <dir>"
+    r"no (?:\w[\w-]{0,20} )?(?:vault|workspace|config|configuration|profile)\b|"
+    r"run [`'\"]?\w+ init)", re.I)
 
 
 def looks_like_no_entrypoint(text):
@@ -277,7 +299,12 @@ _BUILD_MARKERS = re.compile(
     r"\.node['\"]?\s*(?:is missing|not found)|NODE_MODULE_VERSION|"
     r"something went wrong installing the .{0,30} module|"
     r"failed to load native module|run 'npm run postinstall'|"
-    r"run `npm run postinstall`|prebuilt binar|\.node')", re.I)
+    r"run `npm run postinstall`|prebuilt binar|\.node'|"
+    # Audit B rows 05/12/13: packages whose payload is a binary fetched by a
+    # postinstall we deliberately skipped -- our policy, not a publisher defect.
+    r"binary (?:is )?(?:not found|missing)|is not installed yet|"
+    r"postinstall script|installer downloads|reinstall (?:with|@|the)|"
+    r"download (?:it )?manually from)", re.I)
 
 
 def _entrypoint(prefix, identifier, args=()):
@@ -500,8 +527,16 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
         # to stop. Calling that a crash is the same category error as calling a
         # usage screen a crash -- and a server that starts, says nothing and stops
         # is undebuggable by whoever installed it, so it is worth counting on its own.
-        if cls == "CRASH_ON_START" and not tail.strip() and not p.stdout_noise:
-            if p.exit_code() == 0:
+        # Exit status partitions the clean-exit cases, and does it better than any
+        # regex over usage text. A compliant stdio server does not exit 0 before
+        # answering initialize -- so exit 0 means the process deliberately chose to
+        # stop. With output it printed something instead of serving (usage screen,
+        # setup banner, "add this to your config"); with no output at all it said
+        # nothing. Audit B had 5 of 20 in the first case, all read as crashes.
+        if cls == "CRASH_ON_START" and p.exit_code() == 0:
+            if p.stdout_noise or tail.strip():
+                cls = "UNDECLARED_ARGS"
+            else:
                 cls = "SILENT_EXIT_ZERO"
         r.update(stage_failed="initialize", error_class=cls,
                  error_detail=(tail or str(e))[:600], error_stderr=tail)
