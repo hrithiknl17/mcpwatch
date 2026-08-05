@@ -496,6 +496,13 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
             "INSTALL_FAILED" if any(k in low for k in INSTALL_MARKERS) else "CRASH_ON_START")
         # the server told us what it wanted -- believe it over the registry metadata
         cls = classify_prestart_stderr(tail, default)
+        # Exit 0, nothing on either stream, no handshake. The process ran and chose
+        # to stop. Calling that a crash is the same category error as calling a
+        # usage screen a crash -- and a server that starts, says nothing and stops
+        # is undebuggable by whoever installed it, so it is worth counting on its own.
+        if cls == "CRASH_ON_START" and not tail.strip() and not p.stdout_noise:
+            if p.exit_code() == 0:
+                cls = "SILENT_EXIT_ZERO"
         r.update(stage_failed="initialize", error_class=cls,
                  error_detail=(tail or str(e))[:600], error_stderr=tail)
         return finish()

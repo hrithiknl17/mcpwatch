@@ -37,7 +37,11 @@ UNDECLARED_CLASSES = ("UNDECLARED_CREDENTIALS", "UNDECLARED_ARGS", "NEEDS_LOCAL_
 # partition.
 POLICY_EXCLUDED = ("BUILD_SCRIPTS_REQUIRED",)
 
+# SILENT_EXIT_ZERO stays inside "broken outright" -- it did fail to serve -- but
+# gets its own line, because a clean exit is not a crash and the size of that
+# bucket is itself the finding.
 BROKEN_ORDER = ["INSTALL_FAILED", "INSTALL_TIMEOUT", "NO_ENTRYPOINT", "CRASH_ON_START",
+                "SILENT_EXIT_ZERO",
                 "INIT_TIMEOUT", "INIT_RPC_ERROR", "ZERO_TOOLS", "TOOLS_TIMEOUT",
                 "TOOLS_RPC_ERROR", "COMMAND_NOT_FOUND", "PROBE_EXCEPTION"]
 
