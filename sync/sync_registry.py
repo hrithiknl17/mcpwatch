@@ -82,6 +82,36 @@ def arg_tokens(a):
     return None                  # needs a human -> caller decides skip vs omit
 
 
+# Publishers routinely declare the whole npx command line as packageArguments:
+#   ["-y", "-p", "@scope/pkg", "scope-mcp"]
+# Those first tokens are npx's own flags, not the server's. Passing them through
+# makes the server exit with "unknown option '-y'", which we then record as a
+# crash -- a failure we manufactured. The token after -p/--package is the package
+# spec (npx already has it), and what remains is the BIN NAME to run.
+RUNNER_FLAGS = {"-y", "--yes"}
+RUNNER_FLAGS_WITH_OPERAND = {"-p", "--package"}
+
+
+def strip_runner_flags(tokens):
+    """Remove npx's own flags. Returns (remaining tokens, stripped tokens)."""
+    out, stripped, skip = [], [], False
+    for tok in tokens:
+        if skip:
+            stripped.append(tok)
+            skip = False
+            continue
+        if tok in RUNNER_FLAGS:
+            stripped.append(tok)
+        elif tok in RUNNER_FLAGS_WITH_OPERAND:
+            stripped.append(tok)
+            skip = True          # its operand is the package spec
+        elif tok == "--":
+            stripped.append(tok)
+        else:
+            out.append(tok)
+    return out, stripped
+
+
 def build_args(pkg):
     """(tokens to append, names of required args we cannot supply)."""
     tokens, unsupplyable = [], []
@@ -92,6 +122,7 @@ def build_args(pkg):
                 unsupplyable.append(a.get("name") or a.get("valueHint") or "?")
             continue             # optional and unguessable -> just omit it
         tokens += t
+    tokens, _ = strip_runner_flags(tokens)
     return tokens, unsupplyable
 
 

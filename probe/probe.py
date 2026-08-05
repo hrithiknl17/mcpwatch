@@ -124,6 +124,7 @@ class Probe:
         self.stderr_buf = []
         self.stdout_polluted = False
         self.reader_error = None
+        self.stdout_noise = []      # non-JSON stdout lines, verbatim
 
     def _reader(self, stream, q):
         # try/finally: if this thread dies the sentinel must still land, or recv()
@@ -142,6 +143,10 @@ class Probe:
                 self.stderr_buf.append(line.rstrip())
         except (ValueError, OSError, UnicodeError):
             pass
+
+    def diagnostic_text(self):
+        """Everything the server told us, from either stream, for classification."""
+        return "\n".join([self.stderr_tail()] + self.stdout_noise)[:4000]
 
     def stderr_tail(self, head=10, tail=8, width=2000):
         """Fatal diagnostics land at the START of stderr; chatty servers then bury
@@ -212,8 +217,14 @@ class Probe:
             try:
                 msg = json.loads(line)
             except json.JSONDecodeError:
-                # non-JSON on stdout = spec violation, but not fatal. Track it.
+                # non-JSON on stdout = spec violation, but not fatal. Track it AND
+                # keep the text: servers print their usage screen to stdout, not
+                # stderr, and a classifier that only reads stderr books that as a
+                # crash with no diagnostic. 106 of 150 'server closed stdout' rows
+                # had output here that was being thrown away.
                 self.stdout_polluted = True
+                if len(self.stdout_noise) < 40:
+                    self.stdout_noise.append(line)
                 continue
             # Server->client REQUEST (has both method and id). A capability we
             # advertise, we must actually answer -- an unanswered request leaves the
@@ -224,6 +235,19 @@ class Probe:
             if msg.get("id") == want_id:
                 return msg
         raise TimeoutError(f"no response to id={want_id} within {timeout}s")
+
+    def exit_code(self):
+        """Exit status, once known. 0 with no diagnostic means the process ran and
+        chose to stop -- materially different from a crash, and indistinguishable
+        without this."""
+        if not self.proc:
+            return None
+        if self.proc.poll() is None:
+            try:
+                self.proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                return None
+        return self.proc.returncode
 
     def kill(self):
         if self.proc and self.proc.poll() is None:
@@ -250,10 +274,13 @@ BUILD_SCRIPTS = ("prepare", "prepack", "postinstall", "install", "build")
 _BUILD_MARKERS = re.compile(
     r"(node-gyp|node_gyp|prebuild-install|bindings\.js|could not locate the bindings|"
     r"was compiled against a different node\.js version|invalid elf header|"
-    r"\.node['\"]?\s*(?:is missing|not found)|NODE_MODULE_VERSION)", re.I)
+    r"\.node['\"]?\s*(?:is missing|not found)|NODE_MODULE_VERSION|"
+    r"something went wrong installing the .{0,30} module|"
+    r"failed to load native module|run 'npm run postinstall'|"
+    r"run `npm run postinstall`|prebuilt binar|\.node')", re.I)
 
 
-def _entrypoint(prefix, identifier):
+def _entrypoint(prefix, identifier, args=()):
     """Resolve the installed package's bin script.
 
     Returns (path, why) where why is None on success, or a reason code:
@@ -270,33 +297,41 @@ def _entrypoint(prefix, identifier):
     pkg_dir = os.path.join(prefix, "node_modules", *identifier.split("/"))
     pj = os.path.join(pkg_dir, "package.json")
     if not os.path.isfile(pj):
-        return None, "no-bin-declared"
+        return None, "no-bin-declared", list(args)
     try:
         with open(pj, encoding="utf-8") as f:
             meta = json.load(f)
     except (OSError, json.JSONDecodeError):
-        return None, "no-bin-declared"
+        return None, "no-bin-declared", list(args)
     binf = meta.get("bin")
     rel = None
+    args = list(args)
     if isinstance(binf, str):
         rel = binf
     elif isinstance(binf, dict) and binf:
-        short = identifier.split("/")[-1]
-        rel = binf.get(short) or next(iter(binf.values()))
+        # `npx -p @scope/pkg scope-mcp` means "run the bin called scope-mcp".
+        # After runner flags are stripped the leading arg is that name, so honour
+        # it -- picking the default bin instead runs the wrong program.
+        if args and args[0] in binf:
+            rel = binf[args[0]]
+            args = args[1:]
+        else:
+            short = identifier.split("/")[-1]
+            rel = binf.get(short) or next(iter(binf.values()))
     elif meta.get("main"):
         rel = meta["main"]
     if not rel:
-        return None, "no-bin-declared"
+        return None, "no-bin-declared", args
     path = os.path.normpath(os.path.join(pkg_dir, rel))
     if os.path.isfile(path):
-        return path, None
+        return path, None, args
     scripts = meta.get("scripts") or {}
     if any(scripts.get(s) for s in BUILD_SCRIPTS):
-        return None, "unbuilt"
-    return None, "bin-missing"
+        return None, "unbuilt", args
+    return None, "bin-missing", args
 
 
-def npm_prewarm(spec, identifier, timeout=INSTALL_TIMEOUT):
+def npm_prewarm(spec, identifier, timeout=INSTALL_TIMEOUT, args=()):
     """Install `spec` into a throwaway prefix so the later spawn measures boot,
     not download. Returns (ok, t_install_ms, stderr_tail, prefix_dir, entrypoint).
 
@@ -323,17 +358,17 @@ def npm_prewarm(spec, identifier, timeout=INSTALL_TIMEOUT):
         tail = (cp.stderr or "")[-1500:]
         if cp.returncode != 0:
             shutil.rmtree(tmp, ignore_errors=True)
-            return False, dt, tail, None, (None, None)
-        entry, why = _entrypoint(tmp, identifier)
-        return True, dt, tail, tmp, (entry, why)
+            return False, dt, tail, None, (None, None, [])
+        entry, why, rest = _entrypoint(tmp, identifier, args)
+        return True, dt, tail, tmp, (entry, why, rest)
     except subprocess.TimeoutExpired:
         shutil.rmtree(tmp, ignore_errors=True)
         # sentinel, not prose: the caller must tell a slow dep tree apart from a
         # package that does not exist (gotcha 5 -- these are different findings)
-        return False, int((time.time() - t0) * 1000), f"__TIMEOUT__ npm install exceeded {timeout}s", None, (None, None)
+        return False, int((time.time() - t0) * 1000), f"__TIMEOUT__ npm install exceeded {timeout}s", None, (None, None, [])
     except FileNotFoundError as e:
         shutil.rmtree(tmp, ignore_errors=True)
-        return False, int((time.time() - t0) * 1000), f"COMMAND_NOT_FOUND: {e}", None, (None, None)
+        return False, int((time.time() - t0) * 1000), f"COMMAND_NOT_FOUND: {e}", None, (None, None, [])
 
 
 def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewarm=True,
@@ -348,6 +383,7 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
         "tool_count": None, "tool_names": [], "tool_descriptions": {}, "schema_hash": None,
         "entrypoint_status": None,
         "stdout_polluted": False, "prewarmed": False, "spawn_mode": "direct",
+        "exit_code": None, "stdout_noise": [],
         "undeclared_creds": False,
         "probed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
@@ -357,8 +393,9 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
 
     # --- stage 0: install, timed separately from boot (gotcha 2) ---
     if prewarm and spec:
-        ok, t_install, tail, warm_dir, (entry, why) = npm_prewarm(spec, identifier,
-                                                                  timeout=install_timeout)
+        ok, t_install, tail, warm_dir, (entry, why, rest) = npm_prewarm(
+            spec, identifier, timeout=install_timeout, args=extra_args)
+        extra_args = rest
         r["t_install_ms"] = t_install
         r["entrypoint_status"] = why or "ok"
         if not ok:
@@ -420,6 +457,8 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
         watchdog.cancel()
         r["stdout_polluted"] = p.stdout_polluted
         r["undeclared_creds"] = r["error_class"] == "UNDECLARED_CREDENTIALS"
+        r["exit_code"] = p.exit_code()
+        r["stdout_noise"] = p.stdout_noise[:12]
         if r["error_stderr"] is None and p.stderr_buf:
             r["error_stderr"] = p.stderr_tail()
         p.kill()
@@ -442,14 +481,14 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
         # t_init_ms stays install+boot for continuity; t_boot_ms is the honest one
         r["t_init_ms"] = r["t_boot_ms"] + (r["t_install_ms"] or 0)
     except TimeoutError as e:
-        tail = p.stderr_tail()
+        tail = p.diagnostic_text()
         # a server hung waiting on an OAuth prompt is blocked on a human, not slow
         cls = classify_prestart_stderr(tail, "INIT_TIMEOUT")
         r.update(stage_failed="initialize", error_class=cls, error_detail=str(e),
                  error_stderr=tail)
         return finish()
     except (ConnectionError, BrokenPipeError) as e:
-        tail = p.stderr_tail()
+        tail = p.diagnostic_text()
         low = tail.lower()
         # after a successful prewarm the package demonstrably installs, so a death
         # here is a crash, not an install failure -- never misattribute it

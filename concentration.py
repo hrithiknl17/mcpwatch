@@ -75,6 +75,8 @@ def main():
     ap.add_argument("results", nargs="+")
     ap.add_argument("--targets", help="targets.json -- concentration over the WHOLE registry")
     ap.add_argument("--top", type=int, default=10)
+    ap.add_argument("--only", help="restrict the dedupe to one error_class")
+    ap.add_argument("--excerpt", type=int, default=150, help="stderr chars per signature")
     args = ap.parse_args()
 
     try:
@@ -105,8 +107,11 @@ def main():
         print()
 
     # --- 4. distinct problems, not rows -------------------------------------
-    failing = [r for r in rows if not r.get("ok")
-               and r.get("error_class") != "SKIPPED_NEEDS_CREDENTIALS"]
+    if args.only:
+        failing = [r for r in rows if r.get("error_class") == args.only]
+    else:
+        failing = [r for r in rows if not r.get("ok")
+                   and r.get("error_class") != "SKIPPED_NEEDS_CREDENTIALS"]
     by_pub = defaultdict(list)
     for r in failing:
         by_pub[publisher(r)].append(r)
@@ -130,14 +135,26 @@ def main():
           % (len(failing), len(all_sigs), len(failing) / len(all_sigs) if all_sigs else 0))
 
     print()
+    # Over-collapse check: if the global signature count is far below the sum of
+    # per-publisher counts, the fingerprint is merging distinct authors' distinct
+    # bugs into one bucket and the "distinct problems" number is too low.
+    per_pub_total = sum(len({signature(r) for r in rs}) for rs in by_pub.values())
+    print()
+    print("OVER-COLLAPSE CHECK")
+    print("  sum of per-publisher distinct signatures : %d" % per_pub_total)
+    print("  global distinct signatures               : %d" % len(all_sigs))
+    print("  signatures shared across publishers      : %d" % (per_pub_total - len(all_sigs)))
+    print()
     print("MOST-REPEATED SIGNATURES")
     sig_rows = defaultdict(list)
     for r in failing:
         sig_rows[signature(r)].append(r)
-    for (cls, shape), rs in sorted(sig_rows.items(), key=lambda kv: -len(kv[1]))[:8]:
+    for i, (((cls, shape), rs)) in enumerate(
+            sorted(sig_rows.items(), key=lambda kv: -len(kv[1]))[:args.top], 1):
         pubset = {publisher(r) for r in rs}
-        print("  %4d rows  %-24s  %d publisher(s)" % (len(rs), cls, len(pubset)))
-        print("        %s" % (shape[:150] or "(empty stderr)"))
+        print("  [%02d] %4d rows  %-22s  %d publisher(s)" % (i, len(rs), cls, len(pubset)))
+        print("       ex: %s" % (rs[0].get("server")))
+        print("       %s" % (shape[:args.excerpt] or "(EMPTY STDERR)"))
     return 0
 
 
