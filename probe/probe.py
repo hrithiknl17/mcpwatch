@@ -98,6 +98,35 @@ _SETUP = re.compile(
     r"run [`'\"]?\w+ init)", re.I)
 
 
+# Needs a binary or library npm cannot supply: system packages, a PATH executable,
+# a shared object, a pip/brew/cargo install. Distinct from BUILD_SCRIPTS_REQUIRED,
+# where an npm lifecycle script we skipped would have fixed it -- no npm script
+# fixes a missing `mpv`. Counts INSIDE the partition: the server genuinely cannot
+# run as installed. 6 of 80 audited rows.
+_SYSDEP = re.compile(
+    r"((?:sudo )?(?:apt|apt-get|yum|dnf|apk|pacman)(?:-get)? (?:install|add)|"
+    r"brew (?:install|tap)|pip3? install|cargo (?:install|binstall)|\buvx? install|"
+    r"error while loading shared libraries|not found on (?:your )?PATH|not on PATH|"
+    r"python package is not installed|system tools it needs|"
+    r"install (?:an? )?(?:audio player|SANE|imagemagick|ffmpeg))", re.I)
+
+# The publisher never claimed to support this OS. We chose Linux runners, so this
+# is our environment, not their defect -- the same category error as blaming
+# publishers for --ignore-scripts. Counts OUTSIDE the partition.
+_PLATFORM = re.compile(
+    r"(EBADPLATFORM|unsupported platform|"
+    r"wanted \{\"?os\"?:|requires? (?:macos|darwin|windows)\b|"
+    r"supports?: (?:darwin|win32|macos))", re.I)
+
+
+def looks_like_system_dependency(text):
+    return bool(text and _SYSDEP.search(text))
+
+
+def looks_like_platform_unsupported(text):
+    return bool(text and _PLATFORM.search(text))
+
+
 def looks_like_no_entrypoint(text):
     return bool(text and _NO_ENTRY.search(text))
 
@@ -120,10 +149,16 @@ def classify_prestart_stderr(text, default):
     bin often ALSO prints usage; credentials before setup because an OAuth prompt
     frequently mentions a config path too.
     """
-    # checked first: a native addon that never compiled reports itself as a plain
-    # module-not-found, which would otherwise read as NO_ENTRYPOINT or a crash
+    # platform first: a darwin-only package on Linux can fail in many disguises,
+    # and none of them are the publisher's fault
+    if looks_like_platform_unsupported(text):
+        return "PLATFORM_UNSUPPORTED"
+    # then build: an npm lifecycle script we skipped would have fixed it. Checked
+    # before sysdep because those messages often also suggest a brew/pip fallback.
     if text and _BUILD_MARKERS.search(text):
         return "BUILD_SCRIPTS_REQUIRED"
+    if looks_like_system_dependency(text):
+        return "MISSING_SYSTEM_DEPENDENCY"
     if looks_like_no_entrypoint(text):
         return "NO_ENTRYPOINT"
     if looks_like_missing_credentials(text):
@@ -289,7 +324,13 @@ def resolve_cmd(cmd):
 
 
 # Lifecycle scripts that would have produced the missing build output.
-BUILD_SCRIPTS = ("prepare", "prepack", "postinstall", "install", "build")
+# npm runs exactly these three for a package installed from a registry tarball.
+# `prepare` runs for git/local deps, not tarballs; `build` and `prepack` never run
+# on install at all. Treating `build` as an install-time hook blamed our
+# --ignore-scripts policy for packages npm was never going to build -- those are
+# publisher defects and belong inside the partition. This is what made
+# "broken outright" a floor rather than a point estimate.
+BUILD_SCRIPTS = ("preinstall", "install", "postinstall")
 
 # Native-addon and unbuilt-output signatures seen at spawn time once scripts are
 # skipped. These mean "this package needs its build step", not "this package crashed".
@@ -431,6 +472,10 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
                 cls = "INSTALL_TIMEOUT"
             elif "command_not_found" in low:
                 cls = "COMMAND_NOT_FOUND"
+            # EBADPLATFORM at install time is the same finding as an "unsupported
+            # platform" message at runtime -- one bucket, not two
+            elif looks_like_platform_unsupported(tail):
+                cls = "PLATFORM_UNSUPPORTED"
             elif looks_like_no_entrypoint(tail):
                 cls = "NO_ENTRYPOINT"
             else:

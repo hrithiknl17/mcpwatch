@@ -35,13 +35,15 @@ UNDECLARED_CLASSES = ("UNDECLARED_CREDENTIALS", "UNDECLARED_ARGS", "NEEDS_LOCAL_
 # gave these packages the build step they declare. Counting them as broken would
 # blame publishers for our own security policy. Reported separately, outside the
 # partition.
-POLICY_EXCLUDED = ("BUILD_SCRIPTS_REQUIRED",)
+# PLATFORM_UNSUPPORTED joins it: a darwin-only package is not broken, we ran
+# Linux. Same category error as blaming publishers for --ignore-scripts.
+POLICY_EXCLUDED = ("BUILD_SCRIPTS_REQUIRED", "PLATFORM_UNSUPPORTED")
 
 # SILENT_EXIT_ZERO stays inside "broken outright" -- it did fail to serve -- but
 # gets its own line, because a clean exit is not a crash and the size of that
 # bucket is itself the finding.
-BROKEN_ORDER = ["INSTALL_FAILED", "INSTALL_TIMEOUT", "NO_ENTRYPOINT", "CRASH_ON_START",
-                "SILENT_EXIT_ZERO",
+BROKEN_ORDER = ["INSTALL_FAILED", "INSTALL_TIMEOUT", "NO_ENTRYPOINT",
+                "MISSING_SYSTEM_DEPENDENCY", "CRASH_ON_START", "SILENT_EXIT_ZERO",
                 "INIT_TIMEOUT", "INIT_RPC_ERROR", "ZERO_TOOLS", "TOOLS_TIMEOUT",
                 "TOOLS_RPC_ERROR", "COMMAND_NOT_FOUND", "PROBE_EXCEPTION"]
 
@@ -228,7 +230,11 @@ def main():
     out.append("  stdout spec violations:         %d" % polluted)
     out.append("  distinct tool schema hashes:    %d" % len(hashes))
     if policy:
-        out.append("  not adjudicated (build scripts skipped by policy): %d" % len(policy))
+        pc = Counter(r.get("error_class") for r in policy)
+        out.append("  outside the partition (our environment, not their defect):")
+        for k in POLICY_EXCLUDED:
+            if pc.get(k):
+                out.append("      %-28s %5d" % (k, pc[k]))
     out.append("")
     out.append("  Secondary: failure rate among servers that need no configuration")
     out.append("             to start: %s (%d of %d)"
