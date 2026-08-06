@@ -1,0 +1,430 @@
+/* ------------------------------------------------------------------ tokens */
+:root {
+  /* Warm paper rather than white: the use scene is someone opening a link in
+     daylight to read a finding, not an app they live in. */
+  --paper: #faf7f2;
+  --paper-sunk: #f3eee6;
+  --rule: #e2d9cc;
+  --rule-strong: #cabfae;
+  --ink: #17130f;
+  --ink-soft: #4a4038;
+  --ink-mute: #7a6d60;
+
+  /* One accent. It marks exactly one thing on this page: the servers that do
+     not start. Everything else is ink on paper. */
+  --accent: #9a3412;
+  --accent-soft: #c2540f;
+
+  --measure: 65ch;
+  --shell: 74rem;
+
+  --step--1: clamp(0.82rem, 0.79rem + 0.14vw, 0.9rem);
+  --step-0: clamp(1.02rem, 0.98rem + 0.2vw, 1.14rem);
+  --step-1: clamp(1.2rem, 1.12rem + 0.4vw, 1.45rem);
+  --step-2: clamp(1.55rem, 1.35rem + 0.95vw, 2.15rem);
+  --step-3: clamp(2.1rem, 1.6rem + 2.4vw, 3.6rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  font-size: var(--step-0);
+  line-height: 1.62;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--paper);
+}
+
+/* ------------------------------------------------------------------ shell */
+.shell {
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding: clamp(1.5rem, 1rem + 3vw, 4rem) clamp(1.25rem, 0.6rem + 3vw, 3.5rem)
+    6rem;
+}
+
+.masthead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding-bottom: clamp(3rem, 2rem + 5vw, 6rem);
+}
+
+.wordmark {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--step--1);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.masthead-note {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--step--1);
+  color: var(--ink-mute);
+  letter-spacing: 0.01em;
+}
+
+/* ------------------------------------------------------------------ lede */
+.lede {
+  max-width: 24ch;
+  margin: 0;
+  font-size: var(--step-3);
+  font-weight: 400;
+  line-height: 1.06;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+}
+
+.lede em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.lede .figure-broken {
+  color: var(--accent);
+}
+
+.standfirst {
+  max-width: var(--measure);
+  margin: clamp(1.5rem, 1rem + 1.5vw, 2.25rem) 0 0;
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+/* ------------------------------------------------------------- provenance */
+.provenance {
+  margin-top: clamp(2rem, 1.4rem + 2vw, 3rem);
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 2.25rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--step--1);
+  color: var(--ink-mute);
+  letter-spacing: 0.005em;
+}
+
+.provenance b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ table */
+.readout {
+  margin: clamp(3.5rem, 2.5rem + 4vw, 6rem) 0 0;
+}
+
+.readout-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.readout-head h2 {
+  margin: 0;
+  font-size: var(--step-1);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+}
+
+.readout-head span {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--step--1);
+  color: var(--ink-mute);
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.35rem 2rem;
+  padding: clamp(1.5rem, 1.1rem + 1.4vw, 2.3rem) 0
+    clamp(1.1rem, 0.9rem + 0.8vw, 1.5rem);
+  border-bottom: 1px solid var(--rule);
+}
+
+.row-label {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.row-plain {
+  display: block;
+  font-size: var(--step-2);
+  line-height: 1.14;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+
+.row-technical {
+  display: block;
+  margin-top: 0.45rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--step--1);
+  color: var(--ink-mute);
+  letter-spacing: 0.005em;
+}
+
+.row-figures {
+  grid-column: 2;
+  text-align: right;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.row-pct {
+  display: block;
+  font-size: var(--step-2);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.row-meta {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: var(--step--1);
+  color: var(--ink-mute);
+}
+
+/* The bar is the measured proportion drawn to scale -- data, not decoration.
+   It is the only place the page draws anything. */
+.row-bar {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 2px;
+  margin-top: 1.15rem;
+  background: var(--paper-sunk);
+  overflow: hidden;
+}
+
+.row-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  width: var(--w);
+  background: var(--ink-soft);
+  transform-origin: left center;
+  animation: draw 1100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--d);
+}
+
+.row[data-accent="true"] .row-plain,
+.row[data-accent="true"] .row-pct {
+  color: var(--accent);
+}
+
+.row[data-accent="true"] .row-bar i {
+  background: var(--accent);
+}
+
+@keyframes draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.readout-foot {
+  margin: 1.6rem 0 0;
+  max-width: var(--measure);
+  font-size: var(--step--1);
+  color: var(--ink-mute);
+  line-height: 1.6;
+}
+
+.readout-foot code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.95em;
+  color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------------ prose */
+.prose {
+  max-width: var(--measure);
+  margin: clamp(4rem, 3rem + 4vw, 7rem) 0 0;
+  /* long URLs and package names in the writeup must not widen the page */
+  overflow-wrap: break-word;
+}
+
+.prose > * + * {
+  margin-top: 1.15em;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+  text-wrap: balance;
+  margin-top: 2.4em;
+  margin-bottom: 0.55em;
+}
+
+.prose h1 {
+  font-size: var(--step-2);
+}
+.prose h2 {
+  font-size: var(--step-1);
+}
+.prose h3 {
+  font-size: var(--step-0);
+  color: var(--ink-soft);
+}
+
+.prose > *:first-child {
+  margin-top: 0;
+}
+
+.prose a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.prose a:hover {
+  color: var(--accent-soft);
+}
+
+.prose code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.88em;
+  background: var(--paper-sunk);
+  padding: 0.12em 0.36em;
+  border-radius: 2px;
+}
+
+.prose pre {
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-size: var(--step--1);
+  line-height: 1.55;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+  font-size: 1em;
+}
+
+.prose blockquote {
+  margin-inline: 0;
+  padding-left: 1.2rem;
+  border-left: 1px solid var(--rule-strong);
+  color: var(--ink-soft);
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+}
+
+.prose th,
+.prose td {
+  text-align: left;
+  padding: 0.55rem 0.8rem 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.prose th {
+  font-weight: 500;
+}
+
+.prose-scroll {
+  overflow-x: auto;
+  /* the scrollable strip is the table's own, not the page's */
+  margin-inline: -0.25rem;
+  padding-inline: 0.25rem;
+}
+
+/* ----------------------------------------------------------------- footer */
+.colophon {
+  margin-top: clamp(4rem, 3rem + 4vw, 7rem);
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule-strong);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--step--1);
+}
+
+.colophon a {
+  color: var(--ink-soft);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.colophon a:hover {
+  color: var(--accent);
+}
+
+:where(a, button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 34rem) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .row-figures {
+    grid-column: 1;
+    text-align: left;
+    margin-top: 0.7rem;
+  }
+  .row-meta {
+    display: inline;
+    margin-left: 0.7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-bar i {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}

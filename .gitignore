@@ -9,3 +9,10 @@ node_modules/
 *.state.json
 targets*.json
 summary*.json
+
+# the published numbers are tracked on purpose -- the page needs them at build
+# time and the commit is the provenance record
+!web/data/summary.json
+web/node_modules/
+web/.next/
+web/out/

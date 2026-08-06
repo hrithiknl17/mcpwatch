@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-08-06T11:21:06Z",
+  "classifier": "classifier-v2",
+  "run_id": "31088624518",
+  "registry_total": 6798,
+  "probed": 6798,
+  "adjudicated": 6560,
+  "buckets": {
+    "Starts with zero configuration": 3408,
+    "Declares credential needs upfront": 2119,
+    "Undeclared credential requirement": 477,
+    "Broken outright": 556
+  },
+  "undeclared_breakdown": {
+    "UNDECLARED_CREDENTIALS": 293,
+    "UNDECLARED_ARGS": 174,
+    "NEEDS_LOCAL_SETUP": 10
+  },
+  "broken_breakdown": {
+    "CRASH_ON_START": 287,
+    "TOOLS_RPC_ERROR": 18,
+    "INIT_TIMEOUT": 54,
+    "INSTALL_FAILED": 88,
+    "MISSING_SYSTEM_DEPENDENCY": 22,
+    "SILENT_EXIT_ZERO": 37,
+    "NO_ENTRYPOINT": 32,
+    "TOOLS_TIMEOUT": 3,
+    "ZERO_TOOLS": 5,
+    "PROBE_EXCEPTION": 7,
+    "INSTALL_TIMEOUT": 1,
+    "INIT_RPC_ERROR": 2
+  },
+  "policy_excluded": 238,
+  "median_install_ms": 2084,
+  "median_boot_ms": 176,
+  "stdout_polluted": 207,
+  "distinct_schema_hashes": 3316,
+  "secondary_failure_rate": 0.14026236125126135,
+  "bucket_ci95": {
+    "Starts with zero configuration": [
+      50.74138377545291,
+      53.15877128008651
+    ],
+    "Declares credential needs upfront": [
+      31.180836713460014,
+      33.44353813434252
+    ],
+    "Undeclared credential requirement": [
+      6.667661185553679,
+      7.925037090407152
+    ],
+    "Broken outright": [
+      7.825674601451657,
+      9.174150622849917
+    ]
+  },
+  "top_publisher": [
+    "io.github.codespar",
+    126
+  ],
+  "buckets_excl_top_publisher": {
+    "Starts with zero configuration": 3405,
+    "Declares credential needs upfront": 1996,
+    "Undeclared credential requirement": 477,
+    "Broken outright": 556
+  },
+  "fixtures_ok": true
+}

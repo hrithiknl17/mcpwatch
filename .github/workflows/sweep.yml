@@ -48,11 +48,18 @@ jobs:
     outputs:
       matrix: ${{ steps.shard.outputs.matrix }}
       target_count: ${{ steps.shard.outputs.count }}
+      classifier: ${{ steps.tag.outputs.classifier }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # need tags to name the classifier
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Resolve classifier tag
+        id: tag
+        run: echo "classifier=$(git describe --tags --match 'classifier-*' --abbrev=0 2>/dev/null || echo untagged)" >> "$GITHUB_OUTPUT"
 
       - name: Sync registry
         # HTTP GETs only, no package code executes here. Checkpoints every 20
@@ -138,6 +145,8 @@ jobs:
     if: always()               # report on what completed even if shards died
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write          # commits the merged summary back; see below
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -156,10 +165,13 @@ jobs:
       - name: Analyse
         # analyze.py exits 1 if a fixture misclassified -- that means the probe
         # itself is wrong and the run's numbers must not be published.
+        env:
+          CLASSIFIER_TAG: ${{ needs.plan.outputs.classifier }}
         run: |
           python analyze.py "results/results-*.json" \
             --targets targets.json \
             --json summary.json | tee summary.txt
+          cp summary.json web/data/summary.json
           {
             echo '### MCPwatch sweep'
             echo '```'
@@ -173,6 +185,24 @@ jobs:
         if: always()
         run: |
           python sample_undeclared.py "results/results-*.json" -n 20 > audit-sample.txt || true
+
+      # THE UPDATE MECHANISM. Committing the summary (rather than pinging a
+      # Vercel deploy hook) is the simpler of the two: the page needs the file in
+      # the repo to build at all, so a hook would need this commit anyway. The
+      # commit is also the provenance record -- every published number is diffable
+      # against the run that produced it. Vercel's git integration redeploys.
+      - name: Publish numbers
+        if: success()
+        run: |
+          git config user.name  "mcpwatch-bot"
+          git config user.email "noreply@github.com"
+          git add web/data/summary.json
+          if git diff --staged --quiet; then
+            echo "numbers unchanged; nothing to publish"
+          else
+            git commit -m "data: sweep ${{ github.run_id }} ($(date -u +%Y-%m-%d))"
+            git push
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()

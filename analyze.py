@@ -14,7 +14,7 @@ context, so it does not get the top slot.
 
   python analyze.py "results-*.json" --targets targets.json
 """
-import argparse, glob, json, math, statistics as st, sys
+import argparse, datetime, glob, json, math, os, statistics as st, sys
 from collections import Counter, defaultdict
 
 # --- the four buckets -------------------------------------------------------
@@ -151,6 +151,11 @@ def main():
     ap.add_argument("--targets", help="targets.json, for sweep coverage")
     ap.add_argument("--json", dest="as_json", help="also write machine-readable summary")
     ap.add_argument("--top-publishers", type=int, default=5)
+    # provenance -- the published page states which classifier produced the
+    # numbers and when. Without these a stale page is indistinguishable from a
+    # fresh one, which is the failure mode most worth preventing.
+    ap.add_argument("--classifier", default=os.environ.get("CLASSIFIER_TAG", "unknown"))
+    ap.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", ""))
     args = ap.parse_args()
 
     rows, nfiles, dupes = load(args.results)
@@ -185,9 +190,11 @@ def main():
     hashes = {r["schema_hash"] for r in rows if r.get("schema_hash")}
 
     out = []
+    registry_total = len(rows)
     if args.targets:
         with open(args.targets, encoding="utf-8") as f:
             tgts = json.load(f)
+        registry_total = len(tgts)
         out.append("npm+stdio servers in the official MCP registry: %d" % len(tgts))
         out.append("Probed: %d (%s)" % (len(rows), pct(len(rows), len(tgts))))
         out.append("")
@@ -268,6 +275,11 @@ def main():
     if args.as_json:
         with open(args.as_json, "w", encoding="utf-8") as f:
             json.dump({
+                "generated_at": datetime.datetime.now(datetime.timezone.utc)
+                                 .strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "classifier": args.classifier,
+                "run_id": args.run_id,
+                "registry_total": registry_total,
                 "probed": len(rows), "adjudicated": n,
                 "buckets": {b: len(buckets[b]) for b in
                             (BUCKET_ZEROCONF, BUCKET_DECLARED, BUCKET_UNDECLARED, BUCKET_BROKEN)},
