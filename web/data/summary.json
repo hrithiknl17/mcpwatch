@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-06T11:21:06Z",
+  "generated_at": "2026-08-06T12:04:24Z",
   "classifier": "classifier-v2",
   "run_id": "31088624518",
   "registry_total": 6798,
@@ -31,6 +31,10 @@
     "INIT_RPC_ERROR": 2
   },
   "policy_excluded": 238,
+  "policy_breakdown": {
+    "BUILD_SCRIPTS_REQUIRED": 199,
+    "PLATFORM_UNSUPPORTED": 39
+  },
   "median_install_ms": 2084,
   "median_boot_ms": 176,
   "stdout_polluted": 207,

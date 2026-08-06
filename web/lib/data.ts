@@ -45,8 +45,14 @@ export type Summary = {
   medianInstallMs: number;
   medianBootMs: number;
   distinctSchemaHashes: number;
+  stdoutPolluted: number;
   policyExcluded: number;
+  policyBreakdown: Entry[];
+  brokenBreakdown: Entry[];
 };
+
+/** A named count from the sweep, e.g. CRASH_ON_START -> 287. */
+export type Entry = { key: string; label: string; n: number };
 
 // The four buckets, in reading order. Plain English leads: a visitor does not
 // know what MCP is, let alone what "undeclared credential requirement" means.
@@ -72,6 +78,21 @@ const LABELS: { key: string; plain: string; technical: string }[] = [
     technical: "broken outright",
   },
 ];
+
+/** Named counts, largest first. Rails read these; a missing one must not render
+ *  an empty column in silence, so the field is required like any other. */
+function entries(raw: Record<string, unknown>, field: string): Entry[] {
+  const v = raw[field];
+  if (!v || typeof v !== "object") {
+    fail(`summary.json field "${field}" is missing`, `Got: ${JSON.stringify(v)}`);
+  }
+  const out = Object.entries(v as Record<string, number>)
+    .filter(([, n]) => typeof n === "number" && n > 0)
+    .map(([key, n]) => ({ key, label: key.replace(/_/g, " ").toLowerCase(), n }))
+    .sort((a, b) => b.n - a.n);
+  if (!out.length) fail(`summary.json field "${field}" is empty`, "Nothing to render.");
+  return out;
+}
 
 function num(raw: Record<string, unknown>, field: string): number {
   const v = raw[field];
@@ -142,7 +163,10 @@ export function loadSummary(): Summary {
     medianInstallMs: num(raw, "median_install_ms"),
     medianBootMs: num(raw, "median_boot_ms"),
     distinctSchemaHashes: num(raw, "distinct_schema_hashes"),
+    stdoutPolluted: num(raw, "stdout_polluted"),
     policyExcluded: num(raw, "policy_excluded"),
+    policyBreakdown: entries(raw, "policy_breakdown"),
+    brokenBreakdown: entries(raw, "broken_breakdown"),
   };
 }
 

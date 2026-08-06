@@ -286,6 +286,9 @@ def main():
                 "undeclared_breakdown": dict(Counter(r.get("error_class") for r in undeclared)),
                 "broken_breakdown": dict(Counter(r.get("error_class") for r in broken)),
                 "policy_excluded": len(policy),
+                # split, not just the total: the page's left rail names WHY these
+                # sit outside the partition, and a bare count cannot say that
+                "policy_breakdown": dict(Counter(r.get("error_class") for r in policy)),
                 "median_install_ms": mi, "median_boot_ms": mb,
                 "stdout_polluted": polluted, "distinct_schema_hashes": len(hashes),
                 "secondary_failure_rate": (len(broken) / len(probeable)) if probeable else None,
