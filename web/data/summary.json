@@ -1,33 +1,33 @@
 {
-  "generated_at": "2026-09-02T08:28:48Z",
+  "generated_at": "2026-09-03T08:43:04Z",
   "classifier": "classifier-v2",
-  "run_id": "33606031992",
-  "registry_total": 7949,
-  "probed": 7949,
-  "adjudicated": 7689,
+  "run_id": "33731349816",
+  "registry_total": 7993,
+  "probed": 7993,
+  "adjudicated": 7733,
   "buckets": {
-    "Starts with zero configuration": 4047,
-    "Declares credential needs upfront": 2522,
-    "Undeclared credential requirement": 524,
+    "Starts with zero configuration": 4072,
+    "Declares credential needs upfront": 2538,
+    "Undeclared credential requirement": 527,
     "Broken outright": 596
   },
   "undeclared_breakdown": {
-    "UNDECLARED_CREDENTIALS": 316,
+    "UNDECLARED_CREDENTIALS": 319,
     "UNDECLARED_ARGS": 196,
     "NEEDS_LOCAL_SETUP": 12
   },
   "broken_breakdown": {
     "CRASH_ON_START": 323,
-    "SILENT_EXIT_ZERO": 38,
-    "MISSING_SYSTEM_DEPENDENCY": 22,
-    "INSTALL_FAILED": 78,
-    "NO_ENTRYPOINT": 36,
-    "INIT_RPC_ERROR": 8,
-    "INIT_TIMEOUT": 57,
-    "TOOLS_TIMEOUT": 3,
-    "TOOLS_RPC_ERROR": 15,
+    "INIT_TIMEOUT": 56,
     "PROBE_EXCEPTION": 8,
+    "MISSING_SYSTEM_DEPENDENCY": 22,
+    "NO_ENTRYPOINT": 36,
+    "INSTALL_FAILED": 79,
+    "SILENT_EXIT_ZERO": 38,
     "ZERO_TOOLS": 7,
+    "INIT_RPC_ERROR": 8,
+    "TOOLS_RPC_ERROR": 15,
+    "TOOLS_TIMEOUT": 3,
     "INSTALL_TIMEOUT": 1
   },
   "policy_excluded": 260,
@@ -35,27 +35,27 @@
     "BUILD_SCRIPTS_REQUIRED": 205,
     "PLATFORM_UNSUPPORTED": 55
   },
-  "median_install_ms": 2154,
-  "median_boot_ms": 178,
-  "stdout_polluted": 224,
-  "distinct_schema_hashes": 3940,
-  "secondary_failure_rate": 0.12836528106827483,
+  "median_install_ms": 2100,
+  "median_boot_ms": 177,
+  "stdout_polluted": 222,
+  "distinct_schema_hashes": 3966,
+  "secondary_failure_rate": 0.12767780634104542,
   "bucket_ci95": {
     "Starts with zero configuration": [
-      51.51653442523775,
-      53.74810016700447
+      51.543545147597015,
+      53.7687000972843
     ],
     "Declares credential needs upfront": [
-      31.759515297404867,
-      33.8578711310379
+      31.78255502975706,
+      33.875265856740086
     ],
     "Undeclared credential requirement": [
-      6.272942885507396,
-      7.400048899478792
+      6.274445135377879,
+      7.398338342572605
     ],
     "Broken outright": [
-      7.1744994154875705,
-      8.370362446740295
+      7.133555639162586,
+      8.32290142466046
     ]
   },
   "top_publisher": [
@@ -63,9 +63,9 @@
     127
   ],
   "buckets_excl_top_publisher": {
-    "Starts with zero configuration": 4044,
-    "Declares credential needs upfront": 2398,
-    "Undeclared credential requirement": 524,
+    "Starts with zero configuration": 4069,
+    "Declares credential needs upfront": 2414,
+    "Undeclared credential requirement": 527,
     "Broken outright": 596
   },
   "fixtures_ok": true
