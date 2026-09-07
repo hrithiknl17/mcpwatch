@@ -138,6 +138,26 @@ def build_cmd(pkg, args_tokens):
     return ["npx", "-y", spec] + args_tokens
 
 
+# SAFE-PROBE.md's registry-side declaration. Carried through verbatim and
+# unvalidated -- probe.py decides whether it names a real tool. Only this one key
+# is kept: targets.json is already ~5MB and copying every publisher's whole _meta
+# blob into it would multiply that for data nothing reads.
+SAFE_PROBE_KEY = "io.mcpwatch/safe-probe"
+
+
+def safe_probe_meta(*scopes):
+    """First safe-probe declaration found, most specific scope first.
+
+    A package-level declaration beats a server-level one because a server entry
+    can ship several packages and they need not expose the same tools.
+    """
+    for scope in scopes:
+        d = (scope or {}).get("_meta") or {}
+        if SAFE_PROBE_KEY in d:
+            return {SAFE_PROBE_KEY: d[SAFE_PROBE_KEY]}
+    return None
+
+
 def targets_from_entry(entry):
     srv = entry.get("server") or {}
     meta = (entry.get("_meta") or {}).get(OFFICIAL_META) or {}
@@ -173,6 +193,10 @@ def targets_from_entry(entry):
             "server_version": srv.get("version"),
             "status": meta.get("status"),
             "published_at": meta.get("publishedAt"),
+            # None until a publisher adopts SAFE-PROBE.md. Kept as a key so the
+            # adoption rate is measurable from the artifacts rather than assumed
+            # to be zero -- the same reason tool annotations are now retained.
+            "_meta": safe_probe_meta(pkg, srv, entry),
         })
     return out
 

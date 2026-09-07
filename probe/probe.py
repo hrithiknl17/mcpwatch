@@ -19,6 +19,20 @@ PROTOCOL_VERSION = "2025-06-18"
 # into a fake INIT_TIMEOUT.
 CLIENT_CAPS = {"roots": {"listChanged": False}}
 
+# --- safe-probe (SAFE-PROBE.md) ------------------------------------------
+# The namespaced key a publisher sets to declare one tool callable with no
+# credentials and no side effects. Read from the registry entry when present,
+# otherwise from the tool object in the tools/list response.
+SAFE_PROBE_KEY = "io.mcpwatch/safe-probe"
+
+# Fallback rule 4. Anchored at the start and followed by a separator, so it
+# rejects budget_report and forget_user rather than reading them as "get".
+# Anchoring does NOT make it safe: get_or_create_session still matches, and it
+# writes. This is a convention about English, not about behaviour, and it stays
+# a WEAK signal -- which is why every result records the rule that fired, so
+# heuristic hits stay separable from declared ones.
+_READ_SHAPED = re.compile(r"^(list|get|browse|search|fetch|read|show)([_\-]|(?=[A-Z0-9])|$)")
+
 INSTALL_TIMEOUT = 120   # cap on npm install -- one fat dep tree must not eat a job
 BOOT_TIMEOUT = 45       # post-install: handshake budget for an already-cached package
 RPC_TIMEOUT = 20
@@ -168,6 +182,124 @@ def classify_prestart_stderr(text, default):
     if looks_like_needs_args(text):
         return "UNDECLARED_ARGS"
     return default
+
+
+def required_params(tool):
+    """Names in inputSchema.required. [] means the tool is callable with {}.
+
+    An absent `required` is treated as empty, which is what JSON Schema means by
+    its absence -- not as unknown. A schema that is not an object at all is the
+    one case that cannot be read, and it returns None so the caller refuses to
+    select rather than guessing.
+    """
+    schema = tool.get("inputSchema")
+    if schema is None:
+        return []                       # no schema declared == nothing required
+    if not isinstance(schema, dict):
+        return None                     # unreadable; never select on a guess
+    # anyOf/oneOf/allOf can make a parameter mandatory without naming it in
+    # `required`: get_github_user declares nothing required and then answers
+    # "Provide either username or userId". Its callability with {} is not
+    # decidable from the top-level keyword, so it is unreadable, not zero.
+    # Reading it as zero manufactures a failure that is OUR fault and books it
+    # against the publisher.
+    if any(k in schema for k in ("anyOf", "oneOf", "allOf")):
+        return None
+    req = schema.get("required")
+    if req is None:
+        return []
+    if not isinstance(req, list):
+        return None
+    return [str(x) for x in req]
+
+
+def _declared_args(meta):
+    """`arguments` out of a safe-probe _meta value. Absent defaults to {}."""
+    if isinstance(meta, dict):
+        a = meta.get("arguments")
+        if isinstance(a, dict):
+            return a
+    return {}
+
+
+def select_probe_target(tools, registry_meta=None):
+    """Pick one tool to call, per SAFE-PROBE.md's selection order.
+
+    Returns (tool_name, arguments, rule) or (None, None, None).
+
+    `rule` is published with every result on purpose: a declaration is a claim
+    taken on trust, and a name match is a guess about English. Numbers built on
+    them must stay separable, or the weakest evidence gets presented at the
+    strength of the strongest.
+    """
+    by_name = {t.get("name"): t for t in tools if isinstance(t, dict) and t.get("name")}
+
+    # 1. registry declaration -- readable before the process is spawned, and the
+    #    only form that can name arguments for a tool with required params.
+    if isinstance(registry_meta, dict):
+        d = registry_meta.get(SAFE_PROBE_KEY)
+        if isinstance(d, dict) and d.get("tool") in by_name:
+            return d["tool"], _declared_args(d), "registry-declared"
+
+    # 2. tool-level declaration. Presence of the key IS the declaration, so a
+    #    bare {} counts; only an explicit false opts out.
+    for name in sorted(by_name):
+        meta = by_name[name].get("_meta")
+        if isinstance(meta, dict) and SAFE_PROBE_KEY in meta:
+            d = meta[SAFE_PROBE_KEY]
+            if d is False:
+                continue
+            return name, _declared_args(d), "tool-declared"
+
+    # 3. readOnlyHint -- already in the MCP spec, asserts no side effects but NOT
+    #    "no credentials". Paired with zero-required so no argument is invented.
+    # 4. read-shaped name + zero required. Weakest, so it goes last.
+    for rule, pred in (
+        ("readonly-hint",
+         lambda t: isinstance(t.get("annotations"), dict)
+                   and t["annotations"].get("readOnlyHint") is True),
+        ("name-heuristic",
+         lambda t: bool(_READ_SHAPED.match(t.get("name") or ""))),
+    ):
+        for name in sorted(by_name):
+            t = by_name[name]
+            if not pred(t):
+                continue
+            if required_params(t) == []:   # not `not req` -- None means unreadable
+                return name, {}, rule
+    return None, None, None
+
+
+def classify_tool_call(resp):
+    """Map one tools/call response onto the TOOL_CALL_* classes.
+
+    Returns (class, detail). "Parses" means the result carries a content array of
+    well-formed blocks, or structuredContent -- the shape the spec defines. It
+    does NOT mean the content is correct: SAFE-PROBE.md is explicit that nothing
+    here can check that.
+    """
+    if "error" in resp:
+        return "TOOL_CALL_ERROR", json.dumps(resp["error"])[:400]
+    result = resp.get("result")
+    if not isinstance(result, dict):
+        return "TOOL_CALL_MALFORMED", "result is not an object: %s" % type(result).__name__
+    content = result.get("content")
+    structured = result.get("structuredContent")
+    if content is None and isinstance(structured, dict):
+        pass                            # structuredContent-only is valid
+    elif not isinstance(content, list):
+        return "TOOL_CALL_MALFORMED", "result.content is not an array"
+    else:
+        for blk in content:
+            if not isinstance(blk, dict) or not blk.get("type"):
+                return "TOOL_CALL_MALFORMED", "content block missing a type"
+    # isError is the spec's channel for a TOOL-level failure: the call round
+    # tripped fine, the tool refused. That is an error response, not a malformed
+    # one and not a transport failure -- same bucket as a JSON-RPC error, with
+    # the distinction kept in the detail so the two never blur.
+    if result.get("isError") is True:
+        return "TOOL_CALL_ERROR", "isError=true: " + json.dumps(content)[:300]
+    return "TOOL_CALL_OK", None
 
 
 class Probe:
@@ -441,7 +573,8 @@ def npm_prewarm(spec, identifier, timeout=INSTALL_TIMEOUT, args=()):
 
 def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewarm=True,
           install_timeout=INSTALL_TIMEOUT, boot_timeout=BOOT_TIMEOUT,
-          rpc_timeout=RPC_TIMEOUT, hard_wall=HARD_WALL_S):
+          rpc_timeout=RPC_TIMEOUT, hard_wall=HARD_WALL_S,
+          tool_call=False, registry_meta=None):
     r = {
         "server": name, "cmd": cmd, "ok": False, "stage_failed": None,
         "error_class": None, "error_detail": None, "error_stderr": None,
@@ -449,6 +582,20 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
         "t_init_ms": None, "t_tools_ms": None,
         "protocol_version": None, "server_info": None,
         "tool_count": None, "tool_names": [], "tool_descriptions": {}, "schema_hash": None,
+        # Retained for safe-probe selection AND so coverage questions over the
+        # corpus are answerable without a re-sweep. Pure retention: nothing is
+        # called to populate these. `annotations` and `required` used to be
+        # folded into schema_hash and then discarded, which made every question
+        # about them unanswerable from the artifacts.
+        "tool_annotations": {}, "tool_required": {},
+        # --- safe-probe stage (SAFE-PROBE.md). All None = the stage did not run.
+        "tool_call_attempted": False,
+        "probe_tool": None,             # tool selected, or None
+        "probe_rule": None,             # which selection rule fired
+        "probe_args": None,             # arguments sent
+        "tool_call_class": None,        # TOOL_CALL_* / NO_SAFE_PROBE
+        "tool_call_detail": None,
+        "t_tool_call_ms": None,
         "entrypoint_status": None,
         "stdout_polluted": False, "prewarmed": False, "spawn_mode": "direct",
         "exit_code": None, "stdout_noise": [],
@@ -627,10 +774,57 @@ def probe(name, cmd, env=None, spec=None, identifier=None, extra_args=(), prewar
         [{"name": t.get("name"), "schema": t.get("inputSchema")} for t in sorted(tools, key=lambda x: x.get("name", ""))],
         sort_keys=True, separators=(",", ":"))
     r["schema_hash"] = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    r["tool_annotations"] = {t.get("name", "?"): t.get("annotations")
+                             for t in tools if isinstance(t, dict) and t.get("annotations")}
+    r["tool_required"] = {t.get("name", "?"): required_params(t)
+                          for t in tools if isinstance(t, dict)}
+    # ok keeps its v1 meaning exactly: handshake succeeded and >=1 tool was
+    # advertised. The call below never touches it. Folding a failed call into ok
+    # would silently move every published bucket, and "the server listed tools"
+    # and "one tool answered" are different facts that deserve different fields.
     r["ok"] = len(tools) > 0
     if not r["ok"]:
         r.update(stage_failed="tools/list", error_class="ZERO_TOOLS",
                  error_detail="handshake succeeded but server advertises no tools")
+        return finish()
+
+    # --- stage 3: one safe probe call (opt-in) ---------------------------
+    # Off by default. This is the only stage that asks a server to DO something,
+    # at 6800 servers on a schedule, so it never turns on as a side effect of an
+    # unrelated run -- the caller has to ask for it.
+    if tool_call:
+        r["tool_call_attempted"] = True
+        tool_name, tool_args, rule = select_probe_target(tools, registry_meta)
+        r["probe_tool"], r["probe_rule"] = tool_name, rule
+        if tool_name is None:
+            # NOT a failure. Held outside the pass/fail judgment for the same
+            # reason BUILD_SCRIPTS_REQUIRED is: it reflects our method and the
+            # convention's adoption rate, not a defect in this server.
+            r["tool_call_class"] = "NO_SAFE_PROBE"
+            r["tool_call_detail"] = "no tool met the SAFE-PROBE.md criteria"
+            return finish()
+        r["probe_args"] = tool_args
+        t2 = time.time()
+        try:
+            p.send({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                    "params": {"name": tool_name, "arguments": tool_args}})
+            resp = p.recv(3, timeout=rpc_timeout)
+            r["t_tool_call_ms"] = int((time.time() - t2) * 1000)
+        except TimeoutError as e:
+            r["t_tool_call_ms"] = int((time.time() - t2) * 1000)
+            r.update(tool_call_class="TOOL_CALL_TIMEOUT", tool_call_detail=str(e)[:400])
+            return finish()
+        except (ConnectionError, BrokenPipeError, OSError) as e:
+            # Handshook, listed its tools, then died on the first call -- the
+            # exact failure the thread was pointing at. Booking it as a timeout
+            # would hide it: no response arrived because the process went away,
+            # not because it was slow.
+            r["t_tool_call_ms"] = int((time.time() - t2) * 1000)
+            r.update(tool_call_class="TOOL_CALL_CRASH",
+                     tool_call_detail=(p.diagnostic_text() or repr(e))[:400])
+            return finish()
+        cls, detail = classify_tool_call(resp)
+        r.update(tool_call_class=cls, tool_call_detail=detail)
     return finish()
 
 
@@ -666,7 +860,7 @@ def probe_target(t, **kw):
     ident, ver = t.get("identifier"), t.get("version")
     spec = f"{ident}@{ver}" if ident and ver else ident
     r = probe(name, t.get("cmd"), env=t.get("env"), spec=spec, identifier=ident,
-              extra_args=t.get("args") or [], **kw)
+              extra_args=t.get("args") or [], registry_meta=t.get("_meta"), **kw)
     r.update(skipped=False, identifier=ident, version=ver)
     return r
 
@@ -682,6 +876,10 @@ def main():
     ap.add_argument("--resume", action="store_true",
                     help="keep rows already in --out and probe only what is missing")
     ap.add_argument("--no-prewarm", action="store_true", help="fold install back into boot")
+    ap.add_argument("--tool-call", action="store_true",
+                    help="after tools/list, call ONE tool selected per SAFE-PROBE.md "
+                         "(off by default -- this is the only stage that asks a "
+                         "server to do something)")
     ap.add_argument("--install-timeout", type=int, default=INSTALL_TIMEOUT)
     ap.add_argument("--boot-timeout", type=int, default=BOOT_TIMEOUT)
     ap.add_argument("--hard-wall", type=int, default=HARD_WALL_S)
@@ -698,7 +896,8 @@ def main():
         targets = FIXTURES + targets
 
     kw = dict(prewarm=not args.no_prewarm, install_timeout=args.install_timeout,
-              boot_timeout=args.boot_timeout, hard_wall=args.hard_wall)
+              boot_timeout=args.boot_timeout, hard_wall=args.hard_wall,
+              tool_call=args.tool_call)
 
     def flush(rows):
         """Rewrite after every target. A shard killed by the job timeout must not
@@ -739,8 +938,13 @@ def main():
         out.append(res)
         flush(out)
         status = "PASS" if res.get("ok") else f"FAIL[{res.get('error_class')}]"
+        call = ""
+        if res.get("tool_call_attempted"):
+            call = (f"  call={res.get('tool_call_class')}"
+                    f"[{res.get('probe_tool')} via {res.get('probe_rule')}] "
+                    f"{res.get('t_tool_call_ms')}ms")
         print(f"    {status}  install={res.get('t_install_ms')}ms boot={res.get('t_boot_ms')}ms "
-              f"tools={res.get('t_tools_ms')}ms n={res.get('tool_count')}",
+              f"tools={res.get('t_tools_ms')}ms n={res.get('tool_count')}{call}",
               file=sys.stderr, flush=True)
         if t.get("_expect"):
             got = "PASS" if res.get("ok") else res.get("error_class")
